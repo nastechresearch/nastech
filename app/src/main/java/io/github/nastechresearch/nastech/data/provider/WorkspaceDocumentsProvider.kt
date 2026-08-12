@@ -1,4 +1,4 @@
-package me.rerere.rikkahub.data.provider
+package io.github.nastechresearch.nastech.data.provider
 
 import android.database.Cursor
 import android.database.MatrixCursor
@@ -10,9 +10,9 @@ import android.provider.DocumentsContract.Root
 import android.provider.DocumentsProvider
 import android.webkit.MimeTypeMap
 import kotlinx.coroutines.runBlocking
-import me.rerere.rikkahub.R
-import me.rerere.rikkahub.data.db.dao.WorkspaceDAO
-import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
+import io.github.nastechresearch.nastech.R
+import io.github.nastechresearch.nastech.data.db.dao.WorkspaceDAO
+import io.github.nastechresearch.nastech.data.db.entity.WorkspaceEntity
 import me.rerere.workspace.WorkspaceManager
 import org.koin.core.context.GlobalContext
 import java.io.File
@@ -336,7 +336,7 @@ class WorkspaceDocumentsProvider : DocumentsProvider() {
     )
 
     companion object {
-        private const val ROOT_ID = "rikkahub_workspaces"
+        private const val ROOT_ID = "nastech_workspaces"
         private const val ROOT_DOC_ID = "root"
         private const val DOC_PREFIX = "ws/"
 

@@ -1,4 +1,4 @@
-package me.rerere.rikkahub.data.keyboard
+package io.github.nastechresearch.nastech.data.keyboard
 
 import android.content.ComponentName
 import android.content.Context
@@ -15,7 +15,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Binds RikkaHub to the co-signed agent-keyboard ([KEYBOARD_PACKAGE]) AIDL service and
+ * Binds Nastech to the co-signed agent-keyboard ([KEYBOARD_PACKAGE]) AIDL service and
  * drives the active text field through it.
  *
  * Lifecycle the client manages for the caller:
