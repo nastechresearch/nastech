@@ -1,24 +1,20 @@
-name: Android build
+name: Build Nastech release APK
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: android-build-${{ github.workflow }}-${{ github.ref }}
+  group: nastech-release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-debug:
-    name: Assemble debug APK
+  build-release:
+    name: Build release APK
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
       GEMINI_OAUTH_CLIENT_ID: ${{ secrets.GEMINI_OAUTH_CLIENT_ID }}
@@ -27,7 +23,16 @@ jobs:
       - name: Check out source and native submodules
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           submodules: recursive
+
+      - name: Create artifact label
+        id: label
+        shell: bash
+        run: |
+          raw_label="$(git log -1 --format='%s')"
+          safe_label="$(printf '%s' "$raw_label" | LC_ALL=C tr -cd '[:alnum:] ._()-' | sed 's/^ *//;s/ *$//' | cut -c1-60)"
+          printf 'label=%s\n' "${safe_label:-build}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
@@ -40,6 +45,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Android build dependencies
+        shell: bash
         run: |
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager --channel=3 \
@@ -49,14 +55,54 @@ jobs:
             "cmake;3.22.1" \
             "ndk;29.0.14206865"
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      - name: Prepare release signing configuration
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_STORE_PASS: ${{ secrets.SIGNING_STORE_PASS }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASS: ${{ secrets.SIGNING_KEY_PASS }}
+        run: |
+          if [ -n "$SIGNING_KEYSTORE" ] && [ -n "$SIGNING_STORE_PASS" ] && [ -n "$SIGNING_KEY_ALIAS" ] && [ -n "$SIGNING_KEY_PASS" ]; then
+            printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > app/nastech-release.jks
+            cat > local.properties <<EOF
+          storeFile=nastech-release.jks
+          storePassword=$SIGNING_STORE_PASS
+          keyAlias=$SIGNING_KEY_ALIAS
+          keyPassword=$SIGNING_KEY_PASS
+          EOF
+            echo "Release signing configuration is available."
+          else
+            echo "Release signing secrets are unavailable; the build will use the project's unsigned fallback."
+          fi
 
-      - name: Upload debug APKs
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web-ui/pnpm-lock.yaml
+
+      - name: Install web interface dependencies
+        working-directory: web-ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Upload release APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: nastech-debug-apks
-          path: app/build/outputs/apk/debug/*.apk
+          name: nastech-release-${{ github.sha }}-${{ steps.label.outputs.label }}
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
