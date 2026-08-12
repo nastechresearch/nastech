@@ -89,9 +89,9 @@ androidx-media3-common = { module = "androidx.media3:media3-common", version.ref
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
 barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "barcodeScanning" }
-jlatexmath = { module = "com.github.nastech.jlatexmath-android:jlatexmath", version.ref = "jlatexmath" }
-jlatexmath-font-greek = { module = "com.github.nastech.jlatexmath-android:jlatexmath-font-greek", version.ref = "jlatexmath" }
-jlatexmath-font-cyrillic = { module = "com.github.nastech.jlatexmath-android:jlatexmath-font-cyrillic", version.ref = "jlatexmath" }
+jlatexmath = { module = "com.github.rikkahub.jlatexmath-android:jlatexmath", version.ref = "jlatexmath" }
+jlatexmath-font-greek = { module = "com.github.rikkahub.jlatexmath-android:jlatexmath-font-greek", version.ref = "jlatexmath" }
+jlatexmath-font-cyrillic = { module = "com.github.rikkahub.jlatexmath-android:jlatexmath-font-cyrillic", version.ref = "jlatexmath" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 json = { group = "org.json", name = "json", version.ref = "json" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
@@ -123,7 +123,7 @@ androidx-paging-runtime = { group = "androidx.paging", name = "paging-runtime", 
 androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "paging" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
-jetbrains-markdown = { module = "com.github.nastech:markdown", version.ref = "markdown" }
+jetbrains-markdown = { module = "com.github.rikkahub:markdown", version.ref = "markdown" }
 metadata-extractor = { module = "com.drewnoakes:metadata-extractor", version.ref = "metadataExtractor" }
 litertlm-android = { group = "com.google.ai.edge.litertlm", name = "litertlm-android", version.ref = "litertlm" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
@@ -145,7 +145,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlin-coroutines-core" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 lucide-icons = { group = "com.composables", name = "icons-lucide", version.ref = "lucide-icons" }
-huge-icons = { group = "com.github.nastech", name = "hugeicons-compose", version.ref = "huge-icons" }
+huge-icons = { group = "com.github.rikkahub", name = "hugeicons-compose", version.ref = "huge-icons" }
 image-viewer = { group = "com.jvziyaoyao.scale", name = "image-viewer", version.ref = "image-viewer" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
