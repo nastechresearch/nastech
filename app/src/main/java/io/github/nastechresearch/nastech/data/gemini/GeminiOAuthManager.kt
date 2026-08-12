@@ -235,9 +235,9 @@ class GeminiOAuthManager(
 
         // OAuth client configuration is injected at build time. It is intentionally absent
         // from version control so publishing the Android source does not expose credentials.
-        private val CLIENT_ID: String
+        internal val CLIENT_ID: String
             get() = BuildConfig.GEMINI_OAUTH_CLIENT_ID
-        private val CLIENT_SECRET: String
+        internal val CLIENT_SECRET: String
             get() = BuildConfig.GEMINI_OAUTH_CLIENT_SECRET
         const val TOKEN_URL = "https://oauth2.googleapis.com/token"
         const val AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
