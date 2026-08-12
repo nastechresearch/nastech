@@ -21,6 +21,11 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://repository.liferay.com/nexus/content/repositories/public/") {
+            content {
+                includeGroup("com.github.requery")
+            }
+        }
         maven("https://jitpack.io")
     }
 }

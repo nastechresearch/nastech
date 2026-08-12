@@ -55,7 +55,7 @@ ktor = "3.5.1"
 sqlite-vector = "0.9.92"
 jmdns = "3.6.3"
 slf4j = "2.0.18"
-sqlite-android = "80cedc8888df2fe1d22d7f9bf8d9287f621624be"
+sqlite-android = "3.45.0"
 termux = "0.118.0"
 diffutils = "4.17"
 playServicesLocation = "21.3.0"
@@ -188,7 +188,7 @@ jmdns = { module = "org.jmdns:jmdns", version.ref = "jmdns" }
 xz = { module = "org.tukaani:xz", version = "1.12" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-android = { module = "uk.uuid.slf4j:slf4j-android", version = "2.0.17-0" }
-sqlite-android = { module = "com.github.nastech:sqlite-android", version.ref = "sqlite-android" }
+sqlite-android = { module = "com.github.requery:sqlite-android", version.ref = "sqlite-android" }
 termux-terminal-view = { module = "com.termux.termux-app:terminal-view", version.ref = "termux" }
 guava-listenablefuture = { module = "com.google.guava:listenablefuture", version = "9999.0-empty-to-avoid-conflict-with-guava" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
