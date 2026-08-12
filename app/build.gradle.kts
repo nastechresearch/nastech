@@ -4,8 +4,14 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.FileInputStream
 import java.util.Properties
 
-val geminiOAuthClientId = providers.gradleProperty("GEMINI_OAUTH_CLIENT_ID").orNull.orEmpty()
-val geminiOAuthClientSecret = providers.gradleProperty("GEMINI_OAUTH_CLIENT_SECRET").orNull.orEmpty()
+val geminiOAuthClientId = providers.gradleProperty("GEMINI_OAUTH_CLIENT_ID")
+    .orElse(providers.environmentVariable("GEMINI_OAUTH_CLIENT_ID"))
+    .orNull
+    .orEmpty()
+val geminiOAuthClientSecret = providers.gradleProperty("GEMINI_OAUTH_CLIENT_SECRET")
+    .orElse(providers.environmentVariable("GEMINI_OAUTH_CLIENT_SECRET"))
+    .orNull
+    .orEmpty()
 
 plugins {
     alias(libs.plugins.android.application)
