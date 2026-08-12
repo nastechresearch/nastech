@@ -44,7 +44,7 @@ jobs:
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager --channel=3 \
             "platform-tools" \
-            "platforms;android-37" \
+            "platforms;android-37.0" \
             "build-tools;37.0.0" \
             "cmake;3.22.1" \
             "ndk;29.0.14206865"
