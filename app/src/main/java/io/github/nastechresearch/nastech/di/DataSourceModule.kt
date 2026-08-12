@@ -1,0 +1,442 @@
+package io.github.nastechresearch.nastech.di
+
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
+import android.content.Context
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.http.HttpHeaders
+import io.pebbletemplates.pebble.PebbleEngine
+import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
+import io.requery.android.database.sqlite.SQLiteCustomExtension
+import kotlinx.serialization.json.Json
+import me.rerere.ai.provider.ProviderManager
+import me.rerere.common.http.AcceptLanguageBuilder
+import io.github.nastechresearch.nastech.BuildConfig
+import io.github.nastechresearch.nastech.AppScope
+import io.github.nastechresearch.nastech.data.ai.AIRequestInterceptor
+import io.github.nastechresearch.nastech.data.ai.RequestLoggingInterceptor
+import io.github.nastechresearch.nastech.data.ai.transformers.AssistantTemplateLoader
+import io.github.nastechresearch.nastech.data.ai.GenerationHandler
+import io.github.nastechresearch.nastech.data.ai.transformers.TemplateTransformer
+import io.github.nastechresearch.nastech.data.api.HuggingFaceAPI
+import io.github.nastechresearch.nastech.data.api.NastechAPI
+import io.github.nastechresearch.nastech.data.api.SponsorAPI
+import io.github.nastechresearch.nastech.data.codex.CodexAccountRepository
+import io.github.nastechresearch.nastech.data.codex.CodexCredentialStore
+import io.github.nastechresearch.nastech.data.codex.CodexOAuthManager
+import io.github.nastechresearch.nastech.data.codex.CodexProvider
+import io.github.nastechresearch.nastech.data.grok.GrokAccountRepository
+import io.github.nastechresearch.nastech.data.grok.GrokCredentialStore
+import io.github.nastechresearch.nastech.data.grok.GrokOAuthManager
+import io.github.nastechresearch.nastech.data.gemini.GeminiAccountRepository
+import io.github.nastechresearch.nastech.data.gemini.GeminiCredentialStore
+import io.github.nastechresearch.nastech.data.gemini.GeminiOAuthManager
+import io.github.nastechresearch.nastech.data.gemini.GeminiProvider
+import io.github.nastechresearch.nastech.data.grok.GrokProvider
+import io.github.nastechresearch.nastech.data.datastore.SettingsStore
+import io.github.nastechresearch.nastech.data.db.AppDatabase
+import io.github.nastechresearch.nastech.data.db.fts.MessageFtsManager
+import io.github.nastechresearch.nastech.data.db.fts.SimpleDictManager
+import io.github.nastechresearch.nastech.data.db.migrations.Migration_6_7
+import io.github.nastechresearch.nastech.data.db.migrations.Migration_11_12
+import io.github.nastechresearch.nastech.data.db.migrations.Migration_13_14
+import io.github.nastechresearch.nastech.data.db.migrations.Migration_14_15
+import io.github.nastechresearch.nastech.data.db.migrations.Migration_15_16
+import io.github.nastechresearch.nastech.data.db.migrations.Migration_23_24
+import io.github.nastechresearch.nastech.data.ai.mcp.McpManager
+import io.github.nastechresearch.nastech.data.agentrun.AgentRunBootRecovery
+import io.github.nastechresearch.nastech.data.agentrun.AgentRunRepository
+import io.github.nastechresearch.nastech.data.sync.webdav.WebDavSync
+import me.rerere.search.SearchService
+import io.github.nastechresearch.nastech.data.sync.S3Sync
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import org.koin.dsl.module
+import org.koin.core.qualifier.named
+import retrofit2.Retrofit
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+
+val dataSourceModule = module {
+    single {
+        SettingsStore(context = get(), scope = get())
+    }
+
+    single {
+        val context: Context = get()
+        Room.databaseBuilder(context, AppDatabase::class.java, "rikka_hub")
+            .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .addMigrations(Migration_6_7, Migration_11_12, Migration_13_14, Migration_14_15, Migration_15_16, Migration_23_24)
+            .addCallback(object : RoomDatabase.Callback() {
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    // Both steps below are best-effort FTS setup: a failure here (missing dict
+                    // assets, FTS5 module unavailable, native lib not loaded yet) must degrade
+                    // search, not crash every single app launch by throwing out of onOpen and
+                    // failing the whole database open.
+                    try {
+                        val dictDir = SimpleDictManager.extractDict(context)
+                        val cursor = db.query("SELECT jieba_dict(?)", arrayOf(dictDir.absolutePath))
+                        cursor.use {
+                            if (it.moveToFirst()) {
+                                val result = it.getString(0)
+                                val success = result?.trimEnd('/') == dictDir.absolutePath.trimEnd('/')
+                                if (!success) {
+                                    android.util.Log.e(
+                                        "DataSourceModule",
+                                        "jieba_dict failed: $result, path=${dictDir.absolutePath}"
+                                    )
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("DataSourceModule", "onOpen: jieba_dict setup failed", e)
+                    }
+
+                    try {
+                        db.execSQL(io.github.nastechresearch.nastech.data.db.fts.MESSAGE_FTS_CREATE_SQL.trimIndent())
+                    } catch (e: Exception) {
+                        android.util.Log.e("DataSourceModule", "onOpen: message_fts table creation failed", e)
+                    }
+                }
+            })
+            .openHelperFactory(
+                RequerySQLiteOpenHelperFactory(
+                    listOf(
+                RequerySQLiteOpenHelperFactory.ConfigurationOptions { options ->
+                    options.customExtensions.add(
+                        SQLiteCustomExtension(
+                            context.applicationInfo.nativeLibraryDir + "/libsimple",
+                            null
+                        )
+                    )
+                    options
+                }
+            )))
+            .build()
+    }
+
+    single {
+        AssistantTemplateLoader(settingsStore = get())
+    }
+
+    single {
+        PebbleEngine.Builder()
+            .loader(get<AssistantTemplateLoader>())
+            .defaultLocale(Locale.getDefault())
+            .autoEscaping(false)
+            .build()
+    }
+
+    single { TemplateTransformer(engine = get(), settingsStore = get()) }
+
+    single {
+        get<AppDatabase>().conversationDao()
+    }
+
+    single {
+        get<AppDatabase>().conversationCompactionDao()
+    }
+
+    single {
+        get<AppDatabase>().memoryDao()
+    }
+
+    single {
+        get<AppDatabase>().genMediaDao()
+    }
+
+    single {
+        get<AppDatabase>().messageNodeDao()
+    }
+
+    single {
+        get<AppDatabase>().managedFileDao()
+    }
+
+    single {
+        get<AppDatabase>().favoriteDao()
+    }
+
+    single {
+        get<AppDatabase>().workspaceDao()
+    }
+
+    single {
+        get<AppDatabase>().folderDao()
+    }
+
+    single {
+        MessageFtsManager(get())
+    }
+
+    // Phase 24 — unified AgentRun ledger. DAO + the single shared writer/reader + the
+    // boot-recovery sweep. AgentRunRepository has no cross-dependencies (only the DAO), so
+    // there is no DI-cycle risk here.
+    single { get<AppDatabase>().agentRunDao() }
+    single { AgentRunRepository(get()) }
+    single { AgentRunBootRecovery(context = get(), repository = get()) }
+
+    single { McpManager(settingsStore = get(), appScope = get(), filesManager = get(), appEventBus = get()) }
+
+    single {
+        GenerationHandler(
+            context = get(),
+            providerManager = get(),
+            json = get(),
+            memoryRepo = get(),
+            conversationRepo = get(),
+            aiLoggingManager = get(),
+            systemPromptBuilder = get(),
+        )
+    }
+
+    single { io.github.nastechresearch.nastech.data.ai.SystemPromptBuilder() }
+
+    single<OkHttpClient> {
+        val acceptLang = AcceptLanguageBuilder.fromAndroid(get())
+            .build()
+        OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.MINUTES)
+            .writeTimeout(120, TimeUnit.SECONDS)
+            .followSslRedirects(true)
+            .followRedirects(true)
+            .retryOnConnectionFailure(true)
+            .addInterceptor { chain ->
+                val originalRequest = chain.request()
+                val requestBuilder = originalRequest.newBuilder()
+                    .addHeader(HttpHeaders.AcceptLanguage, acceptLang)
+
+                if (originalRequest.header(HttpHeaders.UserAgent) == null) {
+                    requestBuilder.addHeader(HttpHeaders.UserAgent, "Nastech-Android/${BuildConfig.VERSION_NAME}")
+                }
+
+                chain.proceed(requestBuilder.build())
+            }
+            .addNetworkInterceptor { chain ->
+                val request = chain.request()
+                val contentTypeHeader = request.header("Content-Type")
+                if (
+                    contentTypeHeader != null &&
+                    contentTypeHeader.contains(";") &&
+                    contentTypeHeader.substringBefore(";").trim().equals("application/json", ignoreCase = true)
+                ) {
+                    chain.proceed(
+                        request.newBuilder()
+                            .header("Content-Type", contentTypeHeader.substringBefore(";").trim())
+                            .build()
+                    )
+                } else {
+                    chain.proceed(request)
+                }
+            }
+            .addNetworkInterceptor(RequestLoggingInterceptor())
+            .addInterceptor(AIRequestInterceptor())
+            .apply {
+                // HEADERS-level logging prints Authorization: Bearer <api-key> to logcat.
+                // Debug-only so release builds never leak provider keys to logcat.
+                if (BuildConfig.DEBUG) {
+                    addInterceptor(HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.HEADERS
+                    })
+                }
+            }
+            .build().also { SearchService.init(it, get()) }
+    }
+
+    single<OkHttpClient>(named("codex")) {
+        OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.MINUTES)
+            .writeTimeout(120, TimeUnit.SECONDS)
+            .followSslRedirects(true)
+            .followRedirects(true)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    single<OkHttpClient>(named("grok")) {
+        OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.MINUTES)
+            .writeTimeout(120, TimeUnit.SECONDS)
+            .followSslRedirects(true)
+            .followRedirects(true)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    single<OkHttpClient>(named("gemini")) {
+        OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.MINUTES)
+            .writeTimeout(120, TimeUnit.SECONDS)
+            .followSslRedirects(true)
+            .followRedirects(true)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    single {
+        GrokAccountRepository(
+            store = GrokCredentialStore(context = get(), json = get()),
+            client = get(named("grok")),
+            json = get(),
+        )
+    }
+
+    single {
+        GrokOAuthManager(
+            context = get(),
+            scope = get<AppScope>(),
+            client = get(named("grok")),
+            repository = get(),
+            json = get(),
+        )
+    }
+
+    single {
+        GeminiAccountRepository(
+            store = GeminiCredentialStore(context = get(), json = get()),
+            client = get(named("gemini")),
+            json = get(),
+        )
+    }
+
+    single {
+        GeminiOAuthManager(
+            context = get(),
+            scope = get<AppScope>(),
+            client = get(named("gemini")),
+            repository = get(),
+        )
+    }
+
+    single {
+        SponsorAPI.create(get())
+    }
+
+    single {
+        HuggingFaceAPI.create(get())
+    }
+
+    single {
+        CodexAccountRepository(
+            store = CodexCredentialStore(context = get(), json = get()),
+            client = get(named("codex")),
+            json = get(),
+        )
+    }
+
+    single {
+        CodexOAuthManager(
+            context = get(),
+            scope = get<AppScope>(),
+            client = get(named("codex")),
+            repository = get(),
+        )
+    }
+
+    single {
+        val settingsStore: io.github.nastechresearch.nastech.data.datastore.SettingsStore = get()
+        val codexRepository: CodexAccountRepository = get()
+        val json: Json = get()
+        ProviderManager(client = get(), context = get()).also { pm ->
+            pm.registerProvider(
+                "local_litert",
+                me.rerere.locallm.litert.LiteRtProvider(
+                    context = get(),
+                    runtime = get(),
+                    prefs = get(),
+                    settingsUpdater = { transform ->
+                        settingsStore.update { old -> old.copy(providers = transform(old.providers)) }
+                    },
+                ),
+            )
+            pm.registerProvider(
+                "local_llamacpp",
+                me.rerere.llamacpp.LlamaCppProvider(
+                    context = get(),
+                    runtime = get(),
+                    prefs = get(),
+                ),
+            )
+            pm.registerProvider(
+                "codex",
+                CodexProvider(
+                    client = get(named("codex")),
+                    repository = codexRepository,
+                    json = json,
+                    scope = get(),
+                )
+            )
+            pm.registerProvider(
+                "grok",
+                GrokProvider(
+                    client = get(named("grok")),
+                    repository = get<GrokAccountRepository>(),
+                    json = json,
+                    scope = get(),
+                )
+            )
+            pm.registerProvider(
+                "gemini_oauth",
+                GeminiProvider(
+                    client = get(named("gemini")),
+                    repository = get<GeminiAccountRepository>(),
+                    json = json,
+                )
+            )
+        }
+    }
+
+    single {
+        WebDavSync(
+            settingsStore = get(),
+            json = get(),
+            context = get(),
+            httpClient = get(),
+            appDatabase = get()
+        )
+    }
+
+    single<HttpClient> {
+        HttpClient(OkHttp) {
+            engine {
+                config {
+                    connectTimeout(20, TimeUnit.SECONDS)
+                    readTimeout(10, TimeUnit.MINUTES)
+                    writeTimeout(120, TimeUnit.SECONDS)
+                    followSslRedirects(true)
+                    followRedirects(true)
+                    retryOnConnectionFailure(true)
+                }
+            }
+        }
+    }
+
+    single {
+        S3Sync(
+            settingsStore = get(),
+            json = get(),
+            context = get(),
+            httpClient = get(),
+            appDatabase = get()
+        )
+    }
+
+    single<Retrofit> {
+        Retrofit.Builder()
+            .baseUrl("https://api.rikka-ai.com")
+            .addConverterFactory(get<Json>().asConverterFactory("application/json; charset=UTF8".toMediaType()))
+            .build()
+    }
+
+    single<NastechAPI> {
+        get<Retrofit>().create(NastechAPI::class.java)
+    }
+}

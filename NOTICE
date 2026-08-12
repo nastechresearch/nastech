@@ -1,0 +1,7 @@
+# Nastech — Source and License Notice
+
+Nastech is a modified distribution of the RikkaHub Agent codebase, originally published at [ExTV/rikkahub-agent](https://github.com/ExTV/rikkahub-agent). The original project incorporates work from the upstream RikkaHub project and other third-party components.
+
+This repository retains the GNU Affero General Public License version 3 in [`LICENSE`](LICENSE). Copyright notices, third-party notices, and applicable licenses in source files and dependencies remain in effect. Nastech-specific changes include a product rebrand, Android application-identity updates, documentation updates, and replacement application artwork.
+
+For the complete source history and licensing terms, consult the relevant project files and the original upstream repositories.
