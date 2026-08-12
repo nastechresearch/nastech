@@ -73,7 +73,24 @@ jobs:
           EOF
             echo "Release signing configuration is available."
           else
-            echo "Release signing secrets are unavailable; the build will use the project's unsigned fallback."
+            fallback_keystore="$RUNNER_TEMP/nastech-ci-debug.keystore"
+            keytool -genkeypair -noprompt \
+              -keystore "$fallback_keystore" \
+              -storetype JKS \
+              -storepass android \
+              -keypass android \
+              -alias nastech-ci-debug \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Nastech CI, OU=Engineering, O=Nastech, L=Internet, ST=Internet, C=US"
+            cat > local.properties <<EOF
+          storeFile=$fallback_keystore
+          storePassword=android
+          keyAlias=nastech-ci-debug
+          keyPassword=android
+          EOF
+            echo "Release signing secrets are unavailable; using a temporary CI debug keystore."
           fi
 
       - name: Set up Bun
