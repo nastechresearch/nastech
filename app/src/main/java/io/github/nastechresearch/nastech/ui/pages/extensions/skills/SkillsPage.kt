@@ -73,7 +73,7 @@ import io.github.nastechresearch.nastech.ui.components.ui.RikkaConfirmDialog
 import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
-import io.github.nastechresearch.nastech.ui.theme.GlassSurface
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.plus
 import org.koin.androidx.compose.koinViewModel

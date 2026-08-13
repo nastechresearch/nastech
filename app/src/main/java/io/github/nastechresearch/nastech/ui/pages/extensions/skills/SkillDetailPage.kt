@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +22,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BorderStroke
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -79,7 +79,7 @@ import io.github.nastechresearch.nastech.ui.components.nav.BackButton
 import io.github.nastechresearch.nastech.ui.components.ui.RikkaConfirmDialog
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
-import io.github.nastechresearch.nastech.ui.theme.GlassSurface
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.ui.theme.glassContentColor
 import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.plus
