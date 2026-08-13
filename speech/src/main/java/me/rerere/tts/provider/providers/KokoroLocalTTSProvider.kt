@@ -36,32 +36,31 @@ class KokoroLocalTTSProvider(
             error("The selected Kokoro package is not available on this device")
         }
 
-        val kokoro = OfflineTtsKokoroModelConfig.builder()
-            .setModel(modelDirectory.resolve("model.onnx").absolutePath)
-            .setVoices(modelDirectory.resolve("voices.bin").absolutePath)
-            .setTokens(modelDirectory.resolve("tokens.txt").absolutePath)
-            .setDataDir(modelDirectory.resolve("espeak-ng-data").absolutePath)
-            .setLexicon(
-                listOf(
-                    modelDirectory.resolve("lexicon-us-en.txt").absolutePath,
-                    modelDirectory.resolve("lexicon-zh.txt").absolutePath,
-                ).joinToString(","),
-            )
-            .build()
-        val config = OfflineTtsConfig.builder()
-            .setModel(
-                OfflineTtsModelConfig.builder()
-                    .setKokoro(kokoro)
-                    .setNumThreads(2)
-                    .setDebug(false)
-                    .setProvider("cpu")
-                    .build(),
-            )
-            .setMaxNumSentences(1)
-            .setSilenceScale(0.2f)
-            .build()
+        val kokoro = OfflineTtsKokoroModelConfig().apply {
+            model = modelDirectory.resolve("model.onnx").absolutePath
+            voices = modelDirectory.resolve("voices.bin").absolutePath
+            tokens = modelDirectory.resolve("tokens.txt").absolutePath
+            dataDir = modelDirectory.resolve("espeak-ng-data").absolutePath
+            lexicon = listOf(
+                modelDirectory.resolve("lexicon-us-en.txt").absolutePath,
+                modelDirectory.resolve("lexicon-zh.txt").absolutePath,
+            ).joinToString(",")
+        }
+        val modelConfig = OfflineTtsModelConfig().apply {
+            this.kokoro = kokoro
+            numThreads = 2
+            debug = false
+            provider = "cpu"
+        }
+        val config = OfflineTtsConfig().apply {
+            model = modelConfig
+            maxNumSentences = 1
+            silenceScale = 0.2f
+        }
 
-        val tts = OfflineTts(config)
+        // The resolved Android AAR accepts AssetManager even when all model paths point to
+        // app-owned files; it uses it to load the bundled native runtime.
+        val tts = OfflineTts(context.assets, config)
         try {
             val audio = tts.generate(
                 request.text,
