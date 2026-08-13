@@ -34,12 +34,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.nastechresearch.nastech.Screen
 import io.github.nastechresearch.nastech.data.datastore.GlassSurface
+import io.github.nastechresearch.nastech.data.preferences.ToolApprovalPreferences
+import io.github.nastechresearch.nastech.data.repository.ConversationRepository
 import io.github.nastechresearch.nastech.ui.components.nav.BackButton
 import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
 import io.github.nastechresearch.nastech.ui.theme.glassSurface
+import io.github.nastechresearch.nastech.ui.pages.setting.SettingVM
 import io.github.nastechresearch.nastech.utils.navigateToChatPage
 import io.github.nastechresearch.nastech.utils.navigateToVoiceCall
 import io.github.nastechresearch.nastech.utils.plus
@@ -52,14 +56,25 @@ import me.rerere.hugeicons.stroke.Puzzle
 import me.rerere.hugeicons.stroke.Settings03
 import me.rerere.hugeicons.stroke.Shield01
 import me.rerere.hugeicons.stroke.Sparkles
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 /**
  * One connected Nastech Agent control centre. Actions here either open an existing Nastech
  * capability or create a regular Nastech conversation with a focused, editable starting prompt.
  */
 @Composable
-fun AgentBridgePage() {
+fun AgentBridgePage(vm: SettingVM = koinViewModel()) {
     val navigator = LocalNavController.current
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val approvalPreferences: ToolApprovalPreferences = koinInject()
+    val alwaysAllowedTools by approvalPreferences.alwaysAllowFlow.collectAsStateWithLifecycle(initialValue = emptySet())
+    val conversationRepository: ConversationRepository = koinInject()
+    val activeConversations by conversationRepository
+        .getConversationsOfAssistant(settings.assistantId)
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val configuredModelCount = settings.providers.sumOf { it.models.size }
+    val enabledSkillCount = settings.assistants.sumOf { it.enabledSkills.size }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showActionsSheet by remember { mutableStateOf(false) }
 
@@ -93,6 +108,30 @@ fun AgentBridgePage() {
             }
             item {
                 AgentStatusCard(onStartTask = { navigateToChatPage(navigator) })
+            }
+            item {
+                AgentInsightsCard(
+                    conversationCount = activeConversations.size,
+                    configuredModelCount = configuredModelCount,
+                    enabledSkillCount = enabledSkillCount,
+                    autoCompactionEnabled = settings.enableAutoCompaction,
+                    onOpenHistory = { navigator.navigate(Screen.History) },
+                    onOpenCompaction = { navigator.navigate(Screen.SettingModels) },
+                )
+            }
+            item {
+                AgentMilestonesCard(
+                    conversationCount = activeConversations.size,
+                    configuredModelCount = configuredModelCount,
+                    enabledSkillCount = enabledSkillCount,
+                    grantedToolCount = alwaysAllowedTools.size,
+                    voiceInputReady = settings.selectedASRProviderId != null,
+                    onOpenHistory = { navigator.navigate(Screen.History) },
+                    onOpenProviders = { navigator.navigate(Screen.SettingProvider) },
+                    onOpenSkills = { navigator.navigate(Screen.Skills) },
+                    onOpenApprovals = { navigator.navigate(Screen.SettingToolApprovals) },
+                    onOpenVoice = { navigator.navigate(Screen.SettingSpeech) },
+                )
             }
             item {
                 Text("What stays in your control", style = MaterialTheme.typography.titleMedium)
@@ -253,6 +292,110 @@ private fun AgentStatusCard(onStartTask: () -> Unit) {
         }
     }
 }
+
+@Composable
+private fun AgentInsightsCard(
+    conversationCount: Int,
+    configuredModelCount: Int,
+    enabledSkillCount: Int,
+    autoCompactionEnabled: Boolean,
+    onOpenHistory: () -> Unit,
+    onOpenCompaction: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth(), colors = CustomColors.cardColors) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Agent insights", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "$conversationCount conversation${if (conversationCount == 1) "" else "s"} with the current assistant · $configuredModelCount model${if (configuredModelCount == 1) "" else "s"} available · $enabledSkillCount enabled skill${if (enabledSkillCount == 1) "" else "s"}.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                if (autoCompactionEnabled) "Context compaction is enabled for longer chats."
+                else "Context compaction is off; you can enable it when longer chats need more room.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onOpenHistory) { Text("Open history") }
+                OutlinedButton(onClick = onOpenCompaction) { Text("Context settings") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgentMilestonesCard(
+    conversationCount: Int,
+    configuredModelCount: Int,
+    enabledSkillCount: Int,
+    grantedToolCount: Int,
+    voiceInputReady: Boolean,
+    onOpenHistory: () -> Unit,
+    onOpenProviders: () -> Unit,
+    onOpenSkills: () -> Unit,
+    onOpenApprovals: () -> Unit,
+    onOpenVoice: () -> Unit,
+) {
+    val milestones = listOf(
+        AgentMilestone("First conversation", "A saved chat unlocks this local milestone.", conversationCount > 0, onOpenHistory),
+        AgentMilestone("Model catalogue ready", "Add or configure a provider model to prepare this milestone.", configuredModelCount > 0, onOpenProviders),
+        AgentMilestone("Skill toolkit", "Enable a skill for an assistant to prepare this milestone.", enabledSkillCount > 0, onOpenSkills),
+        AgentMilestone("Trusted tool decision", "An Always Allow approval is recorded here when you choose one.", grantedToolCount > 0, onOpenApprovals),
+        AgentMilestone("Voice input ready", "Choose an ASR provider to prepare voice input.", voiceInputReady, onOpenVoice),
+    )
+    Card(modifier = Modifier.fillMaxWidth(), colors = CustomColors.cardColors) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Milestones", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "These indicators read your local Nastech setup and chat state. They do not send analytics or create a separate agent profile.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            milestones.forEach { milestone ->
+                Surface(
+                    onClick = milestone.onClick,
+                    shape = MaterialTheme.shapes.medium,
+                    color = if (milestone.complete) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = if (milestone.complete) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = if (milestone.complete) "✓" else "○",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (milestone.complete) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                        )
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(milestone.title, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                if (milestone.complete) "Ready in your current Nastech setup." else milestone.nextStep,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class AgentMilestone(
+    val title: String,
+    val nextStep: String,
+    val complete: Boolean,
+    val onClick: () -> Unit,
+)
 
 @Composable
 private fun AgentControlCard(
