@@ -32,6 +32,10 @@ val LocalExtendColors = compositionLocalOf { ExtendLightColors }
 val LocalDarkMode = compositionLocalOf { false }
 
 private val AMOLED_DARK_BACKGROUND = Color(0xFF000000)
+private val AMOLED_TEXT = Color(0xFFF5F9FF)
+private val AMOLED_SECONDARY_TEXT = Color(0xFFB8D9FF)
+private val AMOLED_LIGHT_BLUE = Color(0xFF76B8FF)
+private val AMOLED_MINT = Color(0xFF83D9B7)
 
 @Serializable
 enum class ColorMode {
@@ -70,6 +74,28 @@ fun NastechTheme(
             colorScheme.copy(
                 background = AMOLED_DARK_BACKGROUND,
                 surface = AMOLED_DARK_BACKGROUND,
+                surfaceVariant = AMOLED_DARK_BACKGROUND,
+                surfaceContainerLowest = AMOLED_DARK_BACKGROUND,
+                surfaceContainerLow = AMOLED_DARK_BACKGROUND,
+                surfaceContainer = AMOLED_DARK_BACKGROUND,
+                surfaceContainerHigh = AMOLED_DARK_BACKGROUND,
+                surfaceContainerHighest = AMOLED_DARK_BACKGROUND,
+                primary = AMOLED_LIGHT_BLUE,
+                onPrimary = AMOLED_DARK_BACKGROUND,
+                primaryContainer = Color(0xFF0B3157),
+                onPrimaryContainer = AMOLED_TEXT,
+                secondary = AMOLED_MINT,
+                onSecondary = AMOLED_DARK_BACKGROUND,
+                secondaryContainer = Color(0xFF0D302C),
+                onSecondaryContainer = AMOLED_TEXT,
+                tertiary = Color(0xFF91D8C4),
+                onTertiary = AMOLED_DARK_BACKGROUND,
+                tertiaryContainer = Color(0xFF12372F),
+                onTertiaryContainer = AMOLED_TEXT,
+                onBackground = AMOLED_TEXT,
+                onSurface = AMOLED_TEXT,
+                onSurfaceVariant = AMOLED_SECONDARY_TEXT,
+                outline = AMOLED_SECONDARY_TEXT.copy(alpha = 0.72f),
             )
         } else {
             colorScheme
@@ -93,8 +119,8 @@ fun NastechTheme(
         val accent = appearance.accentArgb?.let(::Color)
         colorSchemeConverted.copy(
             primary = accent ?: colorSchemeConverted.primary,
-            secondary = accent ?: colorSchemeConverted.secondary,
-            tertiary = accent ?: colorSchemeConverted.tertiary,
+            secondary = colorSchemeConverted.secondary,
+            tertiary = colorSchemeConverted.tertiary,
             onBackground = contrastSafeForeground(primaryText, colorSchemeConverted.background, colorSchemeConverted.onBackground),
             onSurface = primaryText,
             onSurfaceVariant = secondaryText,

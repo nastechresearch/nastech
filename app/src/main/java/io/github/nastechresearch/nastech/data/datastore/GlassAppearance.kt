@@ -9,20 +9,20 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class GlassAppearance(
     val enabled: Boolean = true,
-    val pureBlack: Boolean = false,
-    val tintArgb: Long = 0xFF233044L,
-    val transparency: Float = 0.72f,
+    val pureBlack: Boolean = true,
+    val tintArgb: Long = 0xFF071A2D,
+    val transparency: Float = 0.86f,
     val blurEnabled: Boolean = true,
-    val blurIntensity: Float = 0.55f,
-    val borderOpacity: Float = 0.28f,
-    val highlightOpacity: Float = 0.16f,
-    val saturation: Float = 1.0f,
-    val backgroundBrightness: Float = 1.0f,
+    val blurIntensity: Float = 0.52f,
+    val borderOpacity: Float = 0.34f,
+    val highlightOpacity: Float = 0.20f,
+    val saturation: Float = 1.03f,
+    val backgroundBrightness: Float = 0.92f,
     val motionEnabled: Boolean = true,
-    /** Optional global foreground overrides. Null retains the active Material color scheme. */
-    val primaryTextArgb: Long? = null,
-    val secondaryTextArgb: Long? = null,
-    val accentArgb: Long? = null,
+    /** Contrast-safe AMOLED defaults; users can still override each foreground color. */
+    val primaryTextArgb: Long? = 0xFFF5F9FF,
+    val secondaryTextArgb: Long? = 0xFFB8D9FF,
+    val accentArgb: Long? = 0xFF76B8FF,
     /** Multiplier applied to the entire Compose font scale, from compact to accessibility-friendly. */
     val textScale: Float = 1.0f,
     val surfaceOverrides: Map<GlassSurface, GlassSurfaceAppearance> = emptyMap(),

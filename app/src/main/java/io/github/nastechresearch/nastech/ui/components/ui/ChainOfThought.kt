@@ -48,8 +48,6 @@ import me.rerere.hugeicons.stroke.ArrowUp01
 import me.rerere.hugeicons.stroke.Search01
 import me.rerere.hugeicons.stroke.Sparkles
 import io.github.nastechresearch.nastech.R
-import io.github.nastechresearch.nastech.data.datastore.GlassSurface
-import io.github.nastechresearch.nastech.ui.theme.glassSurface
 
 private val LocalCardColor = staticCompositionLocalOf { Color.White }
 
@@ -81,7 +79,6 @@ fun <T> ChainOfThought(
     content: @Composable ChainOfThoughtScope.(T) -> Unit
 ) {
     var userExpanded by remember { mutableStateOf(false) }
-    val activityGlass = glassSurface(GlassSurface.ACTIVITY, cardColors.containerColor)
     // forceExpanded overrides the user's collapse — used when one of the steps
     // demands attention (e.g. a tool with a pending approval). Without this, on
     // 3+ pending tool calls only the last 2 rows render and the first sits
@@ -91,17 +88,14 @@ fun <T> ChainOfThought(
     val shouldFillCollapseControlWidth = expanded || !collapsedAdaptiveWidth
 
     CompositionLocalProvider(
-        LocalCardColor provides activityGlass.container
+        LocalCardColor provides Color.Transparent
     ) {
         Column(
             modifier = modifier
-                .clip(RoundedCornerShape(16.dp))
-                .border(1.dp, activityGlass.border, RoundedCornerShape(16.dp))
-                .background(activityGlass.container)
                 .animateContentSize(
                     animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec()
                 )
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = 2.dp, vertical = 2.dp),
         ) {
                 val visibleSteps = if (expanded || !canCollapse) {
                     steps

@@ -10,7 +10,7 @@ private const val COLOR_MODE_KEY = "colorMode"
 
 @Composable
 fun rememberColorMode(): MutableState<ColorMode> {
-    val colorModeState = rememberSharedPreferenceString(COLOR_MODE_KEY, ColorMode.SYSTEM.name)
+    val colorModeState = rememberSharedPreferenceString(COLOR_MODE_KEY, ColorMode.DARK.name)
     return remember(colorModeState) {
         object : MutableState<ColorMode> {
             override var value: ColorMode
@@ -28,13 +28,13 @@ fun rememberColorMode(): MutableState<ColorMode> {
 
 @Composable
 fun rememberCurrentColorMode(): ColorMode {
-    val colorModeValue by rememberSharedPreferenceString(COLOR_MODE_KEY, ColorMode.SYSTEM.name)
+    val colorModeValue by rememberSharedPreferenceString(COLOR_MODE_KEY, ColorMode.DARK.name)
     return colorModeValue.toColorMode()
 }
 
 @Composable
 fun rememberAmoledDarkMode(): MutableState<Boolean> {
-    return rememberSharedPreferenceBoolean("amoledDark", false)
+    return rememberSharedPreferenceBoolean("amoledDark", true)
 }
 
 private fun String?.toColorMode(): ColorMode {
