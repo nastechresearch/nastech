@@ -60,7 +60,6 @@ class ProviderManager(client: OkHttpClient, context: Context) {
             is ProviderSetting.Codex -> getProvider("codex")
             is ProviderSetting.Grok -> getProvider("grok")
             is ProviderSetting.GeminiOAuth -> getProvider("gemini_oauth")
-            is ProviderSetting.OpenCode -> getProvider("opencode")
         } as Provider<T>
     }
 }

@@ -224,11 +224,14 @@ class SettingsStore(
         // 备份提醒
         val BACKUP_REMINDER_CONFIG = stringPreferencesKey("backup_reminder_config")
 
+        // Glass appearance
+        val GLASS_APPEARANCE = stringPreferencesKey("glass_appearance")
+
+        // Welcome and terms acknowledgement
+        val ONBOARDING_ACCEPTED_VERSION = stringPreferencesKey("onboarding_accepted_version")
+
         // 统计
         val LAUNCH_COUNT = intPreferencesKey("launch_count")
-
-        // 赞助提醒
-        val SPONSOR_ALERT_DISMISSED_AT = intPreferencesKey("sponsor_alert_dismissed_at")
     }
 
     private val dataStore = context.settingsStore
@@ -404,8 +407,14 @@ class SettingsStore(
                         BackupReminderConfig()
                     }
                 } ?: BackupReminderConfig(),
+                glassAppearance = preferences[GLASS_APPEARANCE]?.let { raw ->
+                    runCatching { JsonInstant.decodeFromString<GlassAppearance>(raw) }.getOrElse {
+                        Log.w(TAG, "Failed to decode glassAppearance, using default", it)
+                        GlassAppearance()
+                    }
+                } ?: GlassAppearance(),
+                onboardingAcceptedVersion = preferences[ONBOARDING_ACCEPTED_VERSION] ?: "",
                 launchCount = preferences[LAUNCH_COUNT] ?: 0,
-                sponsorAlertDismissedAt = preferences[SPONSOR_ALERT_DISMISSED_AT] ?: 0,
             )
         }
         .map {
@@ -547,9 +556,6 @@ class SettingsStore(
                             models = dropDeniedGeminiOAuthModels(provider.models)
                         )
 
-                        is ProviderSetting.OpenCode -> provider.copy(
-                            models = provider.models.distinctBy { model -> model.id }
-                        )
                     }
                 },
                 assistants = settings.assistants.distinctBy { it.id }.map { assistant ->
@@ -694,8 +700,9 @@ class SettingsStore(
             preferences[WEB_SERVER_LOCALHOST_ONLY] = settings.webServerLocalhostOnly
             preferences[AI_LOG_LEVEL] = settings.aiLogLevel.preferenceName
             preferences[BACKUP_REMINDER_CONFIG] = JsonInstant.encodeToString(settings.backupReminderConfig)
+            preferences[GLASS_APPEARANCE] = JsonInstant.encodeToString(settings.glassAppearance)
+            preferences[ONBOARDING_ACCEPTED_VERSION] = settings.onboardingAcceptedVersion
             preferences[LAUNCH_COUNT] = settings.launchCount
-            preferences[SPONSOR_ALERT_DISMISSED_AT] = settings.sponsorAlertDismissedAt
         }
         settingsFlow.value = settings
     }
@@ -887,8 +894,9 @@ data class Settings(
     val webServerLocalhostOnly: Boolean = false,
     val aiLogLevel: AiLogLevel = AiLogLevel.INFO,
     val backupReminderConfig: BackupReminderConfig = BackupReminderConfig(),
+    val glassAppearance: GlassAppearance = GlassAppearance(),
+    val onboardingAcceptedVersion: String = "",
     val launchCount: Int = 0,
-    val sponsorAlertDismissedAt: Int = 0,
 ) {
     companion object {
         // 构造一个用于初始化的settings, 但它不能用于保存，防止使用初始值存储

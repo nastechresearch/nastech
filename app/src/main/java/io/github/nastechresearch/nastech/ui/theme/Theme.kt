@@ -92,6 +92,7 @@ fun NastechTheme(
     CompositionLocalProvider(
         LocalDarkMode provides darkTheme,
         LocalExtendColors provides extendColors,
+        LocalGlassAppearance provides settings.glassAppearance,
         LocalOverscrollFactory provides null
     ) {
         MaterialExpressiveTheme(

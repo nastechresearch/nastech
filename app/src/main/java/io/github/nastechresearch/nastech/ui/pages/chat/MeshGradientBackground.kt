@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import io.github.nastechresearch.nastech.ui.theme.LocalDarkMode
+import io.github.nastechresearch.nastech.ui.theme.LocalGlassAppearance
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -52,29 +53,58 @@ fun MeshGradientBackground(
     val p4 by phase(6_200, loops = 10, "rose")
 
     val dark = LocalDarkMode.current
+    val glass = LocalGlassAppearance.current
+    val motionP1 = if (glass.motionEnabled) p1 else 0f
+    val motionP2 = if (glass.motionEnabled) p2 else 0f
+    val motionP3 = if (glass.motionEnabled) p3 else 0f
+    val motionP4 = if (glass.motionEnabled) p4 else 0f
+    val tint = Color(glass.tintArgb)
+    fun tune(color: Color): Color {
+        val brightness = glass.backgroundBrightness.coerceIn(0f, 1f)
+        val saturation = glass.saturation.coerceIn(0f, 1f)
+        val brightnessAdjusted = Color(
+            red = color.red * brightness,
+            green = color.green * brightness,
+            blue = color.blue * brightness,
+            alpha = color.alpha,
+        )
+        val luminance = (brightnessAdjusted.red + brightnessAdjusted.green + brightnessAdjusted.blue) / 3f
+        val saturated = Color(
+            red = luminance + (brightnessAdjusted.red - luminance) * saturation,
+            green = luminance + (brightnessAdjusted.green - luminance) * saturation,
+            blue = luminance + (brightnessAdjusted.blue - luminance) * saturation,
+            alpha = brightnessAdjusted.alpha,
+        )
+        return Color(
+            red = saturated.red * 0.90f + tint.red * 0.10f,
+            green = saturated.green * 0.90f + tint.green * 0.10f,
+            blue = saturated.blue * 0.90f + tint.blue * 0.10f,
+            alpha = saturated.alpha,
+        )
+    }
     val baseGradient = if (dark) {
         arrayOf(
-            0.0f to Color(0xFF17233A),
-            0.26f to Color(0xFF101A2C),
-            0.54f to Color(0xFF0B1220),
-            0.76f to Color(0xFF080E19),
-            1.0f to Color(0xFF070B14),
+            0.0f to tune(Color(0xFF17233A)),
+            0.26f to tune(Color(0xFF101A2C)),
+            0.54f to tune(Color(0xFF0B1220)),
+            0.76f to tune(Color(0xFF080E19)),
+            1.0f to tune(Color(0xFF070B14)),
         )
     } else {
         arrayOf(
-            0.0f to Color(0xFFE7F1FF),
-            0.24f to Color(0xFFF0F6FF),
-            0.52f to Color(0xFFF8FBFF),
-            0.76f to Color(0xFFFCFDFF),
-            1.0f to Color(0xFFFFFFFF),
+            0.0f to tune(Color(0xFFE7F1FF)),
+            0.24f to tune(Color(0xFFF0F6FF)),
+            0.52f to tune(Color(0xFFF8FBFF)),
+            0.76f to tune(Color(0xFFFCFDFF)),
+            1.0f to tune(Color(0xFFFFFFFF)),
         )
     }
 
     // Translucent cool lights preserve text contrast and read as light diffused through glass.
-    val blobBlue = if (dark) Color(0xFF7BA9E8) else Color(0xFF88B7F2)
-    val blobMint = if (dark) Color(0xFF62C9BE) else Color(0xFF94DED3)
-    val blobLavender = if (dark) Color(0xFFA7B7F3) else Color(0xFFC5D2FF)
-    val blobRose = if (dark) Color(0xFFD798B8) else Color(0xFFF2C2D6)
+    val blobBlue = tune(if (dark) Color(0xFF7BA9E8) else Color(0xFF88B7F2))
+    val blobMint = tune(if (dark) Color(0xFF62C9BE) else Color(0xFF94DED3))
+    val blobLavender = tune(if (dark) Color(0xFFA7B7F3) else Color(0xFFC5D2FF))
+    val blobRose = tune(if (dark) Color(0xFFD798B8) else Color(0xFFF2C2D6))
     val alphaBlue = if (dark) 0.27f else 0.40f
     val alphaMint = if (dark) 0.20f else 0.30f
     val alphaLavender = if (dark) 0.20f else 0.28f
@@ -92,8 +122,8 @@ fun MeshGradientBackground(
 
             drawBlob(
                 center = Offset(
-                    width * 0.48f + sin(p1) * width * 0.35f,
-                    height * 0.07f + cos(p1 * 1.15f) * height * 0.17f,
+                    width * 0.48f + sin(motionP1) * width * 0.35f,
+                    height * 0.07f + cos(motionP1 * 1.15f) * height * 0.17f,
                 ),
                 radius = radius * 0.42f,
                 color = blobBlue,
@@ -101,8 +131,8 @@ fun MeshGradientBackground(
             )
             drawBlob(
                 center = Offset(
-                    width * 0.17f + sin(p2 + PI.toFloat() * 0.55f) * width * 0.28f,
-                    height * 0.25f + cos(p2) * height * 0.18f,
+                    width * 0.17f + sin(motionP2 + PI.toFloat() * 0.55f) * width * 0.28f,
+                    height * 0.25f + cos(motionP2) * height * 0.18f,
                 ),
                 radius = radius * 0.33f,
                 color = blobMint,
@@ -110,8 +140,8 @@ fun MeshGradientBackground(
             )
             drawBlob(
                 center = Offset(
-                    width * 0.84f + sin(p3 + PI.toFloat() * 0.9f) * width * -0.31f,
-                    height * 0.13f + cos(p3 * 0.9f) * height * 0.17f,
+                    width * 0.84f + sin(motionP3 + PI.toFloat() * 0.9f) * width * -0.31f,
+                    height * 0.13f + cos(motionP3 * 0.9f) * height * 0.17f,
                 ),
                 radius = radius * 0.35f,
                 color = blobLavender,
@@ -119,8 +149,8 @@ fun MeshGradientBackground(
             )
             drawBlob(
                 center = Offset(
-                    width * 0.60f + sin(p4 + PI.toFloat() * 1.25f) * width * 0.26f,
-                    height * 0.36f + cos(p4 * 1.1f) * height * 0.15f,
+                    width * 0.60f + sin(motionP4 + PI.toFloat() * 1.25f) * width * 0.26f,
+                    height * 0.36f + cos(motionP4 * 1.1f) * height * 0.15f,
                 ),
                 radius = radius * 0.29f,
                 color = blobRose,

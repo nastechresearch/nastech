@@ -1175,7 +1175,7 @@ export const ConversationSidebar = React.memo(
             </DropdownMenu>
 
             <a
-              href="https://rikka-ai.com"
+              href="https://nastechresearch.github.io/nastech/"
               target="_blank"
               rel="noopener noreferrer"
               className="ml-auto text-xs font-normal text-foreground/80 hover:text-foreground transition-colors"

@@ -9,6 +9,7 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 
 data class ExtendColors(
     val red1: Color,
@@ -174,18 +175,26 @@ object CustomColors {
 
     val topBarColors: TopAppBarColors
         @Composable get() {
-            return if (!LocalDarkMode.current) TopAppBarDefaults.topAppBarColors(
-                containerColor = colorScheme.surfaceContainer,
-                scrolledContainerColor = colorScheme.surfaceContainer
-            ) else TopAppBarDefaults.topAppBarColors()
+            val fallback = colorScheme.surfaceContainer
+            val container = glassSurface(GlassSurface.TOP_BAR, fallback).container
+            return TopAppBarDefaults.topAppBarColors(
+                containerColor = container,
+                scrolledContainerColor = container,
+            )
         }
 
     val cardColors: CardColors
-        @Composable get() = CardDefaults.cardColors(containerColor = colorScheme.surfaceContainer)
+        @Composable get() = CardDefaults.cardColors(
+            containerColor = glassSurface(GlassSurface.CARD, colorScheme.surfaceContainer).container,
+        )
 
     val cardColorsOnSurfaceContainer: CardColors
-        @Composable get() = CardDefaults.cardColors(containerColor = colorScheme.surfaceBright)
+        @Composable get() = CardDefaults.cardColors(
+            containerColor = glassSurface(GlassSurface.CARD, colorScheme.surfaceBright).container,
+        )
 
     val listItemColors: ListItemColors
-        @Composable get() = ListItemDefaults.colors(containerColor = colorScheme.surfaceBright)
+        @Composable get() = ListItemDefaults.colors(
+            containerColor = glassSurface(GlassSurface.LIST_ITEM, colorScheme.surfaceBright).container,
+        )
 }

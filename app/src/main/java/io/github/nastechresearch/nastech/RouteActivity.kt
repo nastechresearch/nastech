@@ -112,11 +112,12 @@ import io.github.nastechresearch.nastech.ui.pages.setting.SettingNotificationsPa
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPermissionsPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesThemePage
+import io.github.nastechresearch.nastech.ui.pages.setting.SettingGlassAppearancePage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesNotificationPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesGeneralPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesUIPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingThemePage
-import io.github.nastechresearch.nastech.ui.pages.setting.SettingDonatePage
+import io.github.nastechresearch.nastech.ui.pages.welcome.WelcomePage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingFilesPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingMcpPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingModelPage
@@ -292,7 +293,10 @@ class RouteActivity : ComponentActivity() {
             )
         }
 
-        val backStack = if (initialChatIds.size > 1) {
+        val requiresWelcome = settings.onboardingAcceptedVersion != BuildConfig.VERSION_NAME
+        val backStack = if (requiresWelcome) {
+            rememberNavBackStack(Screen.Welcome(initialChatIds.last()))
+        } else if (initialChatIds.size > 1) {
             rememberNavBackStack(Screen.Chat(initialChatIds[0]), Screen.Chat(initialChatIds[1]))
         } else {
             rememberNavBackStack(Screen.Chat(initialChatIds[0]))
@@ -380,6 +384,10 @@ class RouteActivity : ComponentActivity() {
                                 )
                             }
 
+                            entry<Screen.Welcome> { key ->
+                                WelcomePage(chatId = key.chatId)
+                            }
+
                             entry<Screen.ShareHandler> { key ->
                                 ShareHandlerPage(
                                     text = key.text,
@@ -463,6 +471,10 @@ class RouteActivity : ComponentActivity() {
                                 SettingPreferencesThemePage()
                             }
 
+                            entry<Screen.SettingGlassAppearance> {
+                                SettingGlassAppearancePage()
+                            }
+
                             entry<Screen.SettingPreferencesNotification> {
                                 SettingPreferencesNotificationPage()
                             }
@@ -514,10 +526,6 @@ class RouteActivity : ComponentActivity() {
 
                             entry<Screen.SettingSubAgents> {
                                 SettingSubAgentsPage()
-                            }
-
-                            entry<Screen.SettingDonate> {
-                                SettingDonatePage()
                             }
 
                             entry<Screen.SettingFiles> {
@@ -700,6 +708,9 @@ sealed interface Screen : NavKey {
     ) : Screen
 
     @Serializable
+    data class Welcome(val chatId: String) : Screen
+
+    @Serializable
     data class ShareHandler(val text: String, val streamUri: String? = null) : Screen
 
     @Serializable
@@ -760,6 +771,9 @@ sealed interface Screen : NavKey {
     data object SettingPreferencesTheme : Screen
 
     @Serializable
+    data object SettingGlassAppearance : Screen
+
+    @Serializable
     data object SettingPreferencesNotification : Screen
 
     @Serializable
@@ -797,9 +811,6 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object SettingSubAgents : Screen
-
-    @Serializable
-    data object SettingDonate : Screen
 
     @Serializable
     data object SettingFiles : Screen

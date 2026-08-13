@@ -255,30 +255,6 @@ sealed class TTSProviderSetting {
     }
 
     @Serializable
-    @SerialName("kokoro-fastapi")
-    data class KokoroFastAPI(
-        override var id: Uuid = Uuid.random(),
-        override var name: String = "Kokoro TTS",
-        /** Optional bearer token for a protected self-hosted Kokoro-FastAPI service. */
-        val apiKey: String = "",
-        /** OpenAI-compatible server root, normally reachable through a LAN host or emulator bridge. */
-        val baseUrl: String = "http://localhost:8880/v1",
-        val model: String = "kokoro",
-        val voice: String = "af_bella",
-        val responseFormat: String = "mp3",
-    ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
-    }
-
-    @Serializable
     @SerialName("fish-audio")
     data class FishAudio(
         override var id: Uuid = Uuid.random(),
@@ -319,7 +295,6 @@ sealed class TTSProviderSetting {
                 MiMo::class,
                 ElevenLabs::class,
                 Step::class,
-                KokoroFastAPI::class,
                 FishAudio::class,
             )
         }

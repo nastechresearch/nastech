@@ -91,6 +91,7 @@ import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.FullScreen
 import me.rerere.hugeicons.stroke.Zap
 import io.github.nastechresearch.nastech.R
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.datastore.Settings
 import io.github.nastechresearch.nastech.data.datastore.getCurrentAssistant
 import io.github.nastechresearch.nastech.data.datastore.getCurrentChatModel
@@ -110,6 +111,7 @@ import io.github.nastechresearch.nastech.ui.context.LocalASRState
 import io.github.nastechresearch.nastech.ui.context.LocalSettings
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.hooks.ChatInputState
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.SoundEffectPlayer
 import org.koin.compose.koinInject
 import kotlin.time.Duration.Companion.seconds
@@ -135,7 +137,9 @@ fun ChatInput(
     val toaster = LocalToaster.current
     val assistant = settings.getCurrentAssistant()
     val hazeTintColor = MaterialTheme.colorScheme.surfaceContainerLow
-    val inputHazeStyle = HazeMaterials.thin(containerColor = hazeTintColor)
+    val inputGlass = glassSurface(GlassSurface.CHAT_INPUT, hazeTintColor)
+    val inputHazeStyle = HazeMaterials.thin(containerColor = inputGlass.container)
+    val useInputBlur = settings.displaySetting.enableBlurEffect && inputGlass.enabled && inputGlass.blurEnabled
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -210,7 +214,7 @@ fun ChatInput(
                     .fillMaxWidth()
                     .clip(containerShape)
                     .then(
-                        if (settings.displaySetting.enableBlurEffect) Modifier.hazeEffect(
+                        if (useInputBlur) Modifier.hazeEffect(
                             state = hazeState
                         ) {
                             blurEffect {
@@ -221,8 +225,11 @@ fun ChatInput(
                     ),
                 shape = containerShape,
                 tonalElevation = 0.dp,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                color = if (settings.displaySetting.enableBlurEffect) Color.Transparent else hazeTintColor,
+                border = BorderStroke(
+                    1.dp,
+                    if (inputGlass.enabled) inputGlass.border else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                ),
+                color = if (useInputBlur) Color.Transparent else inputGlass.container,
             ) {
                 Column(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

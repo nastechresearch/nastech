@@ -22,7 +22,6 @@ import io.github.nastechresearch.nastech.data.ai.GenerationHandler
 import io.github.nastechresearch.nastech.data.ai.transformers.TemplateTransformer
 import io.github.nastechresearch.nastech.data.api.HuggingFaceAPI
 import io.github.nastechresearch.nastech.data.api.NastechAPI
-import io.github.nastechresearch.nastech.data.api.SponsorAPI
 import io.github.nastechresearch.nastech.data.codex.CodexAccountRepository
 import io.github.nastechresearch.nastech.data.codex.CodexCredentialStore
 import io.github.nastechresearch.nastech.data.codex.CodexOAuthManager
@@ -35,7 +34,6 @@ import io.github.nastechresearch.nastech.data.gemini.GeminiCredentialStore
 import io.github.nastechresearch.nastech.data.gemini.GeminiOAuthManager
 import io.github.nastechresearch.nastech.data.gemini.GeminiProvider
 import io.github.nastechresearch.nastech.data.grok.GrokProvider
-import io.github.nastechresearch.nastech.data.opencode.OpenCodeProvider
 import io.github.nastechresearch.nastech.data.datastore.SettingsStore
 import io.github.nastechresearch.nastech.data.db.AppDatabase
 import io.github.nastechresearch.nastech.data.db.fts.MessageFtsManager
@@ -318,10 +316,6 @@ val dataSourceModule = module {
     }
 
     single {
-        SponsorAPI.create(get())
-    }
-
-    single {
         HuggingFaceAPI.create(get())
     }
 
@@ -391,13 +385,6 @@ val dataSourceModule = module {
                     repository = get<GeminiAccountRepository>(),
                     json = json,
                 )
-            )
-            pm.registerProvider(
-                "opencode",
-                OpenCodeProvider(
-                    client = get(),
-                    json = json,
-                ),
             )
         }
     }

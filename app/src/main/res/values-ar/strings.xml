@@ -400,11 +400,6 @@
   <string name="deep_thinking">تفكير عميق</string>
   <string name="deep_thinking_seconds">فكّر لمدة %1$.1f ثوانٍ</string>
   <string name="delete">حذف</string>
-  <string name="donate_page_afdian_desc">للمستخدمين 🇨🇳</string>
-  <string name="donate_page_donation_methods">طرق التبرع</string>
-  <string name="donate_page_kofi_desc">للمستخدمين حول العالم</string>
-  <string name="donate_page_sponsor_list">قائمة الرعاة</string>
-  <string name="donate_page_title">تبرّع</string>
   <string name="edit">تعديل</string>
   <string name="editing">جارٍ التعديل</string>
   <string name="emoji_picker_search_placeholder">البحث في الرموز التعبيرية...</string>
@@ -805,8 +800,6 @@
   <string name="setting_page_display_setting_desc">إدارة إعدادات العرض</string>
   <string name="setting_page_documentation">التوثيق</string>
   <string name="setting_page_documentation_desc">عرض تعليمات استخدام التطبيق ووثائق المساعدة</string>
-  <string name="setting_page_donate">تبرّع</string>
-  <string name="setting_page_donate_desc">إذا أعجبك، ارعَ عمل المؤلف</string>
   <string name="setting_page_dynamic_color">الألوان الديناميكية</string>
   <string name="setting_page_dynamic_color_desc">استخدام الألوان الديناميكية</string>
   <string name="setting_page_extensions">الإضافات</string>
@@ -831,11 +824,7 @@
   <string name="setting_page_search_title">خدمة البحث</string>
   <string name="setting_page_share">مشاركة</string>
   <string name="setting_page_share_desc">شارك هذا التطبيق مع الأصدقاء</string>
-  <string name="setting_page_share_text">Nastech - مساعد ذكاء اصطناعي مفتوح المصدر لـ Android\n\nالموقع: https://rikka-ai.com/</string>
-  <string name="setting_page_sponsor_alert_confirm">تبرّع</string>
-  <string name="setting_page_sponsor_alert_desc">لقد شغّلت التطبيق أكثر من 100 مرة! إذا كنت تستمتع باستخدامه، من فضلك فكّر في دعم المطوّر.</string>
-  <string name="setting_page_sponsor_alert_dismiss">ليس الآن</string>
-  <string name="setting_page_sponsor_alert_title">ادعم المطوّر</string>
+  <string name="setting_page_share_text">Nastech - مساعد ذكاء اصطناعي مفتوح المصدر لـ Android\n\nالموقع: https://nastechresearch.github.io/nastech/</string>
   <string name="setting_page_theme_setting">إعدادات السمة</string>
   <string name="setting_page_tts_service">خدمة تحويل النص إلى كلام</string>
   <string name="setting_page_tts_service_desc">تكوين مزوّدي خدمة تحويل النص إلى كلام</string>

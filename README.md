@@ -15,7 +15,7 @@ An open-source Android LLM agent with 80+ device tools, AI-authored workflows, s
   <img src="https://img.shields.io/badge/platform-Android%208%2B-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android 8+" />
 </p>
 
-<a href="https://github.com/nastechresearch/nastech">Website</a> ·
+<a href="https://nastechresearch.github.io/nastech/">Website</a> ·
 <a href="https://github.com/nastechresearch/nastech/releases/latest">Download</a> ·
 <a href="#features">Features</a> ·
 <a href="#quick-start">Quick Start</a> ·

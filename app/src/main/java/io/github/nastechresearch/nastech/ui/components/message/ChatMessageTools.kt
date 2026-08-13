@@ -453,6 +453,19 @@ private fun ChainOfThoughtScope.AskUserToolStep(
     val firstQuestion = questions.firstOrNull()?.question ?: "..."
 
     var expanded by remember { mutableStateOf(true) }
+    var submittingSingleChoice by remember(tool.toolCallId) { mutableStateOf(false) }
+
+    fun submitSingleChoice(question: AskUserQuestion, option: String) {
+        if (submittingSingleChoice || onToolAnswer == null) return
+        submittingSingleChoice = true
+        answers[question.id] = option
+        val answerPayload = buildJsonObject {
+            put("answers", buildJsonObject {
+                put(question.id, JsonPrimitive(option))
+            })
+        }
+        onToolAnswer(tool.toolCallId, answerPayload.toString())
+    }
 
     ControlledChainOfThoughtStep(
         expanded = expanded,
@@ -498,7 +511,7 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                         if (isPending && onToolAnswer != null) {
                             when (q.selectionType) {
                                 "single" -> {
-                                    // Single select: chips only, no text input
+                                    // Single choice suggestions advance immediately when this is the agent's only question.
                                     if (q.options.isNotEmpty()) {
                                         FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -507,7 +520,10 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                                             q.options.forEach { option ->
                                                 FilterChip(
                                                     selected = answers[q.id] == option,
-                                                    onClick = { answers[q.id] = option },
+                                                    onClick = {
+                                                        if (questions.size == 1) submitSingleChoice(q, option)
+                                                        else answers[q.id] = option
+                                                    },
                                                     label = {
                                                         Text(
                                                             text = option,
@@ -548,7 +564,7 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                                     }
                                 }
                                 else -> {
-                                    // Text (default): optional option chips + free text input
+                                    // Text questions keep an editable fallback; their suggested options can still advance a single-question flow.
                                     if (q.options.isNotEmpty()) {
                                         FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -557,7 +573,10 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                                             q.options.forEach { option ->
                                                 FilterChip(
                                                     selected = answers[q.id] == option,
-                                                    onClick = { answers[q.id] = option },
+                                                    onClick = {
+                                                        if (questions.size == 1) submitSingleChoice(q, option)
+                                                        else answers[q.id] = option
+                                                    },
                                                     label = {
                                                         Text(
                                                             text = option,
@@ -615,7 +634,7 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                             }
                             onToolAnswer(tool.toolCallId, answerPayload.toString())
                         },
-                        enabled = questions.all { q ->
+                        enabled = !submittingSingleChoice && questions.all { q ->
                             when (q.selectionType) {
                                 "multi" -> !multiAnswers[q.id].isNullOrEmpty()
                                 else -> !answers[q.id].isNullOrBlank()

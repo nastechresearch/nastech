@@ -46,7 +46,6 @@ fun TTSProviderConfigure(
                     is TTSProviderSetting.XAI -> "xAI"
                     is TTSProviderSetting.MiMo -> "MiMo"
                     is TTSProviderSetting.Step -> "Step"
-                    is TTSProviderSetting.KokoroFastAPI -> "Kokoro (self-hosted)"
                     is TTSProviderSetting.ElevenLabs -> "ElevenLabs"
                     is TTSProviderSetting.FishAudio -> "Fish Audio"
                 },
@@ -66,7 +65,6 @@ fun TTSProviderConfigure(
                         TTSProviderSetting.ElevenLabs::class -> "ElevenLabs"
                         TTSProviderSetting.FishAudio::class -> "Fish Audio"
                         TTSProviderSetting.Step::class -> "Step"
-                        TTSProviderSetting.KokoroFastAPI::class -> "Kokoro (self-hosted)"
                         else -> providerClass.simpleName ?: "Unknown"
                     }
                 },
@@ -127,11 +125,6 @@ fun TTSProviderConfigure(
                             name = "Step TTS"
                         )
 
-                        TTSProviderSetting.KokoroFastAPI::class -> TTSProviderSetting.KokoroFastAPI(
-                            id = setting.id,
-                            name = "Kokoro TTS"
-                        )
-
                         else -> setting
                     }
                     onValueChange(newSetting)
@@ -167,7 +160,6 @@ fun TTSProviderConfigure(
             is TTSProviderSetting.ElevenLabs -> ElevenLabsTTSConfiguration(setting, onValueChange)
             is TTSProviderSetting.FishAudio -> FishAudioTTSConfiguration(setting, onValueChange)
             is TTSProviderSetting.Step -> StepTTSConfiguration(setting, onValueChange)
-            is TTSProviderSetting.KokoroFastAPI -> KokoroTTSConfiguration(setting, onValueChange)
         }
     }
 }
@@ -239,74 +231,6 @@ private fun OpenAITTSConfiguration(
                 onValueChange(setting.copy(voice = voice))
             },
             modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
-private fun KokoroTTSConfiguration(
-    setting: TTSProviderSetting.KokoroFastAPI,
-    onValueChange: (TTSProviderSetting) -> Unit,
-) {
-    FormItem(
-        label = { Text("Server URL") },
-        description = { Text("OpenAI-compatible Kokoro-FastAPI root URL, usually http://host:8880/v1") },
-    ) {
-        OutlinedTextField(
-            value = setting.baseUrl,
-            onValueChange = { onValueChange(setting.copy(baseUrl = it)) },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("http://localhost:8880/v1") },
-        )
-    }
-
-    FormItem(
-        label = { Text("API token (optional)") },
-        description = { Text("Leave empty unless your self-hosted server requires bearer authentication.") },
-    ) {
-        OutlinedTextField(
-            value = setting.apiKey,
-            onValueChange = { onValueChange(setting.copy(apiKey = it)) },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Optional bearer token") },
-        )
-    }
-
-    FormItem(
-        label = { Text(stringResource(R.string.setting_tts_page_model)) },
-        description = { Text("Kokoro-FastAPI model identifier.") },
-    ) {
-        OutlinedTextField(
-            value = setting.model,
-            onValueChange = { onValueChange(setting.copy(model = it)) },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("kokoro") },
-        )
-    }
-
-    FormItem(
-        label = { Text(stringResource(R.string.setting_tts_page_voice)) },
-        description = { Text("Kokoro voice identifier, for example af_bella.") },
-    ) {
-        OutlinedTextField(
-            value = setting.voice,
-            onValueChange = { onValueChange(setting.copy(voice = it)) },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("af_bella") },
-        )
-    }
-
-    val responseFormats = listOf("mp3", "wav", "opus", "aac", "pcm")
-    FormItem(
-        label = { Text("Response format") },
-        description = { Text("Audio format requested from the self-hosted Kokoro server.") },
-    ) {
-        SelectTextField(
-            value = setting.responseFormat,
-            options = responseFormats,
-            onValueChange = { onValueChange(setting.copy(responseFormat = it)) },
-            onOptionSelected = { onValueChange(setting.copy(responseFormat = it)) },
-            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

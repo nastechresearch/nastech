@@ -8,7 +8,6 @@ import me.rerere.tts.provider.providers.ElevenLabsTTSProvider
 import me.rerere.tts.provider.providers.FishAudioTTSProvider
 import me.rerere.tts.provider.providers.GeminiTTSProvider
 import me.rerere.tts.provider.providers.GroqTTSProvider
-import me.rerere.tts.provider.providers.KokoroTTSProvider
 import me.rerere.tts.provider.providers.MiMoTTSProvider
 import me.rerere.tts.provider.providers.MiniMaxTTSProvider
 import me.rerere.tts.provider.providers.OpenAITTSProvider
@@ -29,7 +28,6 @@ class TTSManager(private val context: Context) {
     private val stepProvider = StepTTSProvider()
     private val elevenLabsProvider = ElevenLabsTTSProvider()
     private val fishAudioProvider = FishAudioTTSProvider()
-    private val kokoroProvider = KokoroTTSProvider()
 
     fun generateSpeech(
         providerSetting: TTSProviderSetting,
@@ -47,7 +45,6 @@ class TTSManager(private val context: Context) {
             is TTSProviderSetting.ElevenLabs -> elevenLabsProvider.generateSpeech(context, providerSetting, request)
             is TTSProviderSetting.FishAudio -> fishAudioProvider.generateSpeech(context, providerSetting, request)
             is TTSProviderSetting.Step -> stepProvider.generateSpeech(context, providerSetting, request)
-            is TTSProviderSetting.KokoroFastAPI -> kokoroProvider.generateSpeech(context, providerSetting, request)
         }
     }
 
@@ -68,7 +65,6 @@ class TTSManager(private val context: Context) {
             is TTSProviderSetting.ElevenLabs -> elevenLabsProvider.promptGuidance
             is TTSProviderSetting.FishAudio -> fishAudioProvider.promptGuidance
             is TTSProviderSetting.Step -> stepProvider.promptGuidance
-            is TTSProviderSetting.KokoroFastAPI -> kokoroProvider.promptGuidance
         }
     }
 }

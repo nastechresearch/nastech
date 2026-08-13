@@ -86,6 +86,12 @@ fun SettingPreferencesThemePage(vm: SettingVM = koinViewModel()) {
                         trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
                     )
                     item(
+                        onClick = { navController.navigate(Screen.SettingGlassAppearance) },
+                        headlineContent = { Text("Glass Appearance") },
+                        supportingContent = { Text("Tint, transparency, blur, and manual surface overrides") },
+                        trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                    )
+                    item(
                         headlineContent = { Text(stringResource(R.string.setting_display_page_amoled_dark_mode_title)) },
                         supportingContent = { Text(stringResource(R.string.setting_display_page_amoled_dark_mode_desc)) },
                         trailingContent = {

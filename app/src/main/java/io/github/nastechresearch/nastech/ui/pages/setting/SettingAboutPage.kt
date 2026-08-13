@@ -157,21 +157,21 @@ fun SettingAboutPage() {
                         modifier = Modifier.padding(horizontal = 8.dp),
                     ) {
                         item(
-                            onClick = { context.openUrl("https://rikka-ai.com/") },
+                            onClick = { context.openUrl("https://nastechresearch.github.io/nastech/") },
                             leadingContent = { Icon(HugeIcons.Earth, null) },
-                            supportingContent = { Text("https://rikka-ai.com") },
+                            supportingContent = { Text("https://nastechresearch.github.io/nastech/") },
                             headlineContent = { Text(stringResource(R.string.about_page_website)) },
                         )
                         item(
-                            onClick = { context.openUrl("https://github.com/nastech/nastech") },
+                            onClick = { context.openUrl("https://github.com/nastechresearch/nastech") },
                             leadingContent = { Icon(HugeIcons.Github, null) },
-                            supportingContent = { Text("https://github.com/nastech/nastech") },
+                            supportingContent = { Text("https://github.com/nastechresearch/nastech") },
                             headlineContent = { Text(stringResource(R.string.about_page_github)) },
                         )
                         item(
-                            onClick = { context.openUrl("https://github.com/nastech/nastech/blob/master/LICENSE") },
+                            onClick = { context.openUrl("https://nastechresearch.github.io/nastech/license/") },
                             leadingContent = { Icon(HugeIcons.File02, null) },
-                            supportingContent = { Text("https://github.com/nastech/nastech/blob/master/LICENSE") },
+                            supportingContent = { Text("https://nastechresearch.github.io/nastech/license/") },
                             headlineContent = { Text(stringResource(R.string.about_page_license)) },
                         )
                     }
