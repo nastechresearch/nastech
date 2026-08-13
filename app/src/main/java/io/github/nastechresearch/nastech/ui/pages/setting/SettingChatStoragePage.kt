@@ -319,7 +319,7 @@ private fun StorageSectionLabel(text: String) {
         text = text,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 4.dp, top = 4.dp),
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp, end = 4.dp, bottom = 0.dp),
     )
 }
 
