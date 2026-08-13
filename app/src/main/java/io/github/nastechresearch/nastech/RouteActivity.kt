@@ -18,7 +18,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.blur
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,6 +65,11 @@ import io.github.nastechresearch.nastech.data.db.DatabaseMigrationTracker
 import io.github.nastechresearch.nastech.data.db.MigrationState
 import io.github.nastechresearch.nastech.data.event.AppEvent
 import io.github.nastechresearch.nastech.data.event.AppEventBus
+import dev.chrisbanes.haze.blur.blurEffect
+import dev.chrisbanes.haze.blur.materials.HazeMaterials
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import io.github.nastechresearch.nastech.ui.activity.SafeModeActivity
 import io.github.nastechresearch.nastech.ui.components.ui.ScreenReaderOverlay
 import io.github.nastechresearch.nastech.ui.components.ui.TTSController
@@ -277,6 +281,7 @@ class RouteActivity : ComponentActivity() {
         val tts = rememberCustomTtsState()
         val screenReader = rememberScreenReaderState(tts)
         val activeReaderRequest by screenReader.activeRequest.collectAsStateWithLifecycle()
+        val readerHazeState = rememberHazeState()
         val asr = rememberCustomAsrState()
         val eventBus = koinInject<AppEventBus>()
         LaunchedEffect(tts) {
@@ -365,7 +370,7 @@ class RouteActivity : ComponentActivity() {
                         ),
                         modifier = Modifier
                             .fillMaxSize()
-                            .then(if (activeReaderRequest?.focus == true) Modifier.blur(18.dp) else Modifier),
+                            .hazeSource(readerHazeState),
                         onBack = { backStack.removeLastOrNull() },
                         transitionSpec = {
                             if (backStack.size == 1) fadeIn() togetherWith fadeOut()
@@ -713,8 +718,19 @@ class RouteActivity : ComponentActivity() {
                                 }
                             }
                         }
+                    }
+                    ScreenReaderOverlay(
+                        state = screenReader,
+                        modifier = if (activeReaderRequest?.focus == true) {
+                            Modifier.hazeEffect(state = readerHazeState) {
+                                blurEffect {
+                                    style = HazeMaterials.thin(containerColor = Color.Black.copy(alpha = 0.78f))
+                                }
+                            }
+                        } else {
+                            Modifier
+                        },
                     )
-                    ScreenReaderOverlay(state = screenReader)
                 }
             }
         }
@@ -733,7 +749,7 @@ sealed interface Screen : NavKey {
         val nodeId: String? = null
     ) : Screen
 
-        @Serializable
+    @Serializable
     data class Welcome(val chatId: String) : Screen
 
 
