@@ -319,6 +319,9 @@ private fun ChatPageContent(
                     onNewChat = {
                         navigateToChatPage(navController)
                     },
+                    onGoHome = {
+                        navController.clearAndNavigate(Screen.Home)
+                    },
                     onClickMenu = {
                         previewMode = !previewMode
                     },
@@ -721,6 +724,7 @@ private fun TopBar(
     previewMode: Boolean,
     onClickMenu: () -> Unit,
     onNewChat: () -> Unit,
+    onGoHome: () -> Unit,
     onUpdateTitle: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -779,6 +783,9 @@ private fun TopBar(
             }
         },
         actions = {
+            IconButton(onClick = onGoHome) {
+                Icon(HugeIcons.Message01, "Open workspace")
+            }
             IconButton(
                 onClick = {
                     onClickMenu()

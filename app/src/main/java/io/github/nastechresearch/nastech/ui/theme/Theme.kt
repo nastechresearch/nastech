@@ -78,17 +78,27 @@ fun NastechTheme(
     val extendColors = if (darkTheme) ExtendDarkColors else ExtendLightColors
     val appearanceColorScheme = remember(colorSchemeConverted, settings.glassAppearance) {
         val appearance = settings.glassAppearance
-        val primaryText = appearance.primaryTextArgb?.let(::Color)
-        val secondaryText = appearance.secondaryTextArgb?.let(::Color)
+        val visibleSurface = if (appearance.pureBlack) Color.Black else Color(appearance.tintArgb)
+        val primaryText = contrastSafeForeground(
+            requested = appearance.primaryTextArgb?.let(::Color),
+            background = visibleSurface,
+            fallback = colorSchemeConverted.onSurface,
+        )
+        val secondaryText = contrastSafeForeground(
+            requested = appearance.secondaryTextArgb?.let(::Color),
+            background = visibleSurface,
+            fallback = colorSchemeConverted.onSurfaceVariant,
+            minimumRatio = 3.2f,
+        )
         val accent = appearance.accentArgb?.let(::Color)
         colorSchemeConverted.copy(
             primary = accent ?: colorSchemeConverted.primary,
             secondary = accent ?: colorSchemeConverted.secondary,
             tertiary = accent ?: colorSchemeConverted.tertiary,
-            onBackground = primaryText ?: colorSchemeConverted.onBackground,
-            onSurface = primaryText ?: colorSchemeConverted.onSurface,
-            onSurfaceVariant = secondaryText ?: colorSchemeConverted.onSurfaceVariant,
-            outline = secondaryText?.copy(alpha = 0.72f) ?: colorSchemeConverted.outline,
+            onBackground = contrastSafeForeground(primaryText, colorSchemeConverted.background, colorSchemeConverted.onBackground),
+            onSurface = primaryText,
+            onSurfaceVariant = secondaryText,
+            outline = secondaryText.copy(alpha = 0.72f),
         )
     }
 
@@ -117,6 +127,30 @@ fun NastechTheme(
             motionScheme = MotionScheme.expressive()
         )
     }
+}
+
+private fun contrastSafeForeground(
+    requested: Color?,
+    background: Color,
+    fallback: Color,
+    minimumRatio: Float = 4.5f,
+): Color {
+    val preferred = requested ?: fallback
+    if (contrastRatio(preferred, background) >= minimumRatio) return preferred
+    val light = Color(0xFFF5F7FF)
+    val dark = Color(0xFF101318)
+    return if (contrastRatio(light, background) >= contrastRatio(dark, background)) light else dark
+}
+
+private fun contrastRatio(foreground: Color, background: Color): Float {
+    val lighter = maxOf(foreground.relativeLuminance(), background.relativeLuminance())
+    val darker = minOf(foreground.relativeLuminance(), background.relativeLuminance())
+    return (lighter + 0.05f) / (darker + 0.05f)
+}
+
+private fun Color.relativeLuminance(): Float {
+    fun channel(value: Float): Float = if (value <= 0.04045f) value / 12.92f else ((value + 0.055f) / 1.055f).let { it * it * it }
+    return (0.2126f * channel(red)) + (0.7152f * channel(green)) + (0.0722f * channel(blue))
 }
 
 val MaterialTheme.extendColors

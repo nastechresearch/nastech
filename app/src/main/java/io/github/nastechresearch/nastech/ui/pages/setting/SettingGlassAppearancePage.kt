@@ -20,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -58,6 +59,7 @@ fun SettingGlassAppearancePage(vm: SettingVM = koinViewModel()) {
     val update: (GlassAppearance) -> Unit = { profile ->
         vm.updateSettings(settings.copy(glassAppearance = profile))
     }
+    var selectedSurfaceGroup by remember { mutableStateOf<GlassSurfaceGroup?>(null) }
 
     Scaffold(
         topBar = {
@@ -81,6 +83,25 @@ fun SettingGlassAppearancePage(vm: SettingVM = koinViewModel()) {
                 GlassPreview(settings.glassAppearance)
             }
             item {
+                Card(modifier = Modifier.fillMaxWidth(), colors = CustomColors.cardColors) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Restore readable Nastech colors", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "Reset tint, contrast, and text colors to the balanced Nastech dark appearance.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        OutlinedButton(onClick = { update(GlassAppearance()) }) { Text("Restore") }
+                    }
+                }
+            }
+            item {
                 GlobalGlassControls(
                     profile = settings.glassAppearance,
                     onUpdate = update,
@@ -88,29 +109,42 @@ fun SettingGlassAppearancePage(vm: SettingVM = koinViewModel()) {
             }
             item {
                 Text(
-                    text = "Manual surface overrides",
+                    text = "Surface adjustments",
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = "Each surface inherits the global profile until you turn off Use global.",
+                    text = "Open a focused category to change individual surfaces. Every surface uses the global profile until you switch off Use global.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            items(GlassSurface.entries.size, key = { GlassSurface.entries[it].name }) { index ->
-                val surface = GlassSurface.entries[index]
-                GlassSurfaceEditor(
-                    surface = surface,
+            items(GlassSurfaceGroup.entries.size, key = { GlassSurfaceGroup.entries[it].name }) { index ->
+                val group = GlassSurfaceGroup.entries[index]
+                SurfaceGroupCard(
+                    group = group,
                     profile = settings.glassAppearance,
-                    onUpdate = update,
+                    onClick = { selectedSurfaceGroup = group },
                 )
             }
-            item {
-                OutlinedButton(
-                    onClick = { update(GlassAppearance()) },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Restore default glass appearance")
+        }
+    }
+
+    selectedSurfaceGroup?.let { group ->
+        ModalBottomSheet(onDismissRequest = { selectedSurfaceGroup = null }) {
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item {
+                    Text(group.title, style = MaterialTheme.typography.titleLarge)
+                    Text(group.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                items(group.surfaces.size, key = { group.surfaces[it].name }) { index ->
+                    GlassSurfaceEditor(
+                        surface = group.surfaces[index],
+                        profile = settings.glassAppearance,
+                        onUpdate = update,
+                    )
                 }
             }
         }
@@ -211,6 +245,50 @@ private fun GlobalGlassControls(profile: GlassAppearance, onUpdate: (GlassAppear
                 onReset = { onUpdate(profile.copy(accentArgb = null)) },
             )
             TextScaleSlider(profile.textScale) { onUpdate(profile.copy(textScale = it)) }
+        }
+    }
+}
+
+private enum class GlassSurfaceGroup(
+    val title: String,
+    val description: String,
+    val surfaces: List<GlassSurface>,
+) {
+    WORKSPACE("Workspace", "Background, navigation, cards, and settings surfaces.", listOf(GlassSurface.APP_BACKGROUND, GlassSurface.TOP_BAR, GlassSurface.BOTTOM_BAR, GlassSurface.CARD, GlassSurface.LIST_ITEM, GlassSurface.SETTINGS)),
+    CHAT("Chat", "Composer and message materials for a focused conversation view.", listOf(GlassSurface.CHAT_INPUT, GlassSurface.USER_BUBBLE, GlassSurface.ASSISTANT_BUBBLE, GlassSurface.ACTIVITY)),
+    OVERLAYS("Overlays", "Dialogs and bottom sheets that sit above the workspace.", listOf(GlassSurface.DIALOG, GlassSurface.BOTTOM_SHEET)),
+    CONTROLS("Controls", "Buttons and interactive material emphasis.", listOf(GlassSurface.BUTTON)),
+}
+
+@Composable
+private fun SurfaceGroupCard(group: GlassSurfaceGroup, profile: GlassAppearance, onClick: () -> Unit) {
+    val adjustedCount = group.surfaces.count { surface -> profile.surfaceOverrides[surface]?.inheritGlobal == false }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CustomColors.cardColors,
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(Color(profile.tintArgb)),
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(group.title, style = MaterialTheme.typography.titleMedium)
+                Text(group.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    if (adjustedCount == 0) "Using global appearance" else "$adjustedCount customized surface${if (adjustedCount == 1) "" else "s"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Text("Edit", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         }
     }
 }

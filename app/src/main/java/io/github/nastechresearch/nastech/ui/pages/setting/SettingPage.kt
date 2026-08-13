@@ -139,6 +139,10 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                 }
             }
 
+            item("controlCenter") {
+                SettingsControlCenter(navController)
+            }
+
             item("generalSettings") {
                 var colorMode by rememberColorMode()
                 val selectedColorModeText = when (colorMode) {
@@ -463,6 +467,76 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
 }
 
 @Composable
+private fun SettingsControlCenter(navController: Navigator) {
+    Column(
+        modifier = Modifier.padding(horizontal = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("Control center", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Start with the controls that shape every Nastech conversation.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            SettingsQuickTile(
+                title = "Appearance",
+                subtitle = "Color and glass",
+                icon = HugeIcons.Sun01,
+                onClick = { navController.navigate(Screen.SettingGlassAppearance) },
+                modifier = Modifier.weight(1f),
+            )
+            SettingsQuickTile(
+                title = "Voice",
+                subtitle = "Speak and listen",
+                icon = HugeIcons.Megaphone01,
+                onClick = { navController.navigate(Screen.SettingSpeech) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            SettingsQuickTile(
+                title = "Providers",
+                subtitle = "Models and keys",
+                icon = HugeIcons.Brain02,
+                onClick = { navController.navigate(Screen.SettingProvider) },
+                modifier = Modifier.weight(1f),
+            )
+            SettingsQuickTile(
+                title = "Agent",
+                subtitle = "Skills and tasks",
+                icon = HugeIcons.Robot01,
+                onClick = { navController.navigate(Screen.AgentBridge) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsQuickTile(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
 private fun ProviderConfigWarningCard(navController: Navigator) {
     Card(
         modifier = Modifier.padding(8.dp),

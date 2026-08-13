@@ -29,6 +29,7 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +69,7 @@ import me.rerere.asr.ASRProviderSetting
 import io.github.nastechresearch.nastech.data.datastore.DEFAULT_SYSTEM_TTS_ID
 import io.github.nastechresearch.nastech.data.datastore.Settings
 import io.github.nastechresearch.nastech.ui.components.nav.BackButton
+import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.components.ui.AutoAIIcon
 import io.github.nastechresearch.nastech.ui.components.ui.Tag
 import io.github.nastechresearch.nastech.ui.components.ui.TagType
@@ -75,6 +77,7 @@ import io.github.nastechresearch.nastech.ui.context.LocalTTSState
 import io.github.nastechresearch.nastech.ui.pages.setting.components.ASRProviderConfigure
 import io.github.nastechresearch.nastech.ui.pages.setting.components.TTSProviderConfigure
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.utils.navigateToChatPage
 import io.github.nastechresearch.nastech.utils.plus
 import me.rerere.tts.provider.TTSProviderSetting
 import org.koin.androidx.compose.koinViewModel
@@ -89,6 +92,7 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
     var editingASRProvider by remember { mutableStateOf<ASRProviderSetting?>(null) }
     var selectedPage by remember { mutableIntStateOf(0) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val navController = LocalNavController.current
 
     Scaffold(
         topBar = {
@@ -148,6 +152,9 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
             0 -> Column(modifier = Modifier.padding(innerPadding)) {
                 VoiceOverviewCard(
                     settings = settings,
+                    onStartVoiceConversation = {
+                        navigateToChatPage(navController, initText = "Let’s have a voice conversation about: ")
+                    },
                     modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp),
                 )
                 TTSPlaybackSpeedSetting(
@@ -382,6 +389,7 @@ private fun TTSProviderList(
 @Composable
 private fun VoiceOverviewCard(
     settings: Settings,
+    onStartVoiceConversation: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val selectedTts = settings.ttsProviders.firstOrNull { it.id == settings.selectedTTSProviderId }
@@ -431,6 +439,14 @@ private fun VoiceOverviewCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            }
+            FilledTonalButton(
+                onClick = onStartVoiceConversation,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(HugeIcons.Mic01, contentDescription = null)
+                Spacer(Modifier.size(8.dp))
+                Text("Start voice conversation")
             }
         }
     }
