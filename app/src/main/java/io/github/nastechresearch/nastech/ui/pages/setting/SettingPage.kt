@@ -5,6 +5,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -76,6 +77,7 @@ import me.rerere.hugeicons.stroke.Sun01
 import me.rerere.hugeicons.stroke.WavingHand01
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.Screen
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.datastore.isNotConfigured
 import io.github.nastechresearch.nastech.data.files.FilesManager
 import io.github.nastechresearch.nastech.ui.components.nav.BackButton
@@ -88,6 +90,8 @@ import io.github.nastechresearch.nastech.ui.context.Navigator
 import io.github.nastechresearch.nastech.ui.hooks.rememberColorMode
 import io.github.nastechresearch.nastech.ui.theme.ColorMode
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.joinQQGroup
 import io.github.nastechresearch.nastech.utils.openUrl
 import io.github.nastechresearch.nastech.utils.plus
@@ -521,10 +525,16 @@ private fun SettingsQuickTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val tileSurface = glassSurface(GlassSurface.SETTINGS, MaterialTheme.colorScheme.surfaceContainerHigh)
     Card(
         modifier = modifier,
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        shape = RoundedCornerShape(22.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, tileSurface.border),
+        colors = CardDefaults.cardColors(
+            containerColor = tileSurface.container,
+            contentColor = glassContentColor(GlassSurface.SETTINGS, MaterialTheme.colorScheme.surfaceContainerHigh),
+        ),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

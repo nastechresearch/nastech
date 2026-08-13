@@ -99,6 +99,7 @@ import io.github.nastechresearch.nastech.ui.pages.assistant.detail.AssistantProm
 import io.github.nastechresearch.nastech.ui.pages.assistant.detail.AssistantRequestPage
 import io.github.nastechresearch.nastech.ui.pages.backup.BackupPage
 import io.github.nastechresearch.nastech.ui.pages.chat.ChatPage
+import io.github.nastechresearch.nastech.ui.pages.chat.MeshGradientBackground
 import io.github.nastechresearch.nastech.ui.pages.debug.DebugPage
 import io.github.nastechresearch.nastech.ui.pages.developer.DeveloperPage
 import io.github.nastechresearch.nastech.ui.pages.extensions.ExtensionsPage
@@ -358,11 +359,10 @@ class RouteActivity : ComponentActivity() {
                     showCloseButton = true,
                 )
                 TTSController()
-                Box(
+                MeshGradientBackground(
                     modifier = Modifier
                         .fillMaxSize()
-                        .semantics { testTagsAsResourceId = true }
-                        .background(MaterialTheme.colorScheme.background)
+                        .semantics { testTagsAsResourceId = true },
                 ) {
                     NavDisplay(
                         backStack = backStack,

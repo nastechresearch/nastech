@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,6 +77,7 @@ import me.rerere.hugeicons.stroke.MusicNote03
 import me.rerere.hugeicons.stroke.Video01
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.Screen
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.model.Assistant
 import io.github.nastechresearch.nastech.data.model.AssistantAffectScope
 import io.github.nastechresearch.nastech.data.model.MessageNode
@@ -90,6 +92,8 @@ import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.modifier.shimmer
 import io.github.nastechresearch.nastech.ui.context.LocalSettings
 import io.github.nastechresearch.nastech.ui.theme.LocalChatFontFamily
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.ui.theme.rememberChatFontFamily
 import io.github.nastechresearch.nastech.ui.theme.extendColors
 import io.github.nastechresearch.nastech.utils.JsonInstant
@@ -330,6 +334,11 @@ private fun MessagePartsBlock(
     // on the tail part (e.g. streaming text appended to the final Text part).
     val partsKey = parts.size.toString() + (parts.lastOrNull()?.hashCode()?.toString() ?: "")
     val groupedParts = remember(partsKey) { parts.groupMessageParts() }
+    val userBubble = glassSurface(GlassSurface.USER_BUBBLE, MaterialTheme.colorScheme.primaryContainer)
+    val assistantBubble = glassSurface(GlassSurface.ASSISTANT_BUBBLE, MaterialTheme.colorScheme.surfaceContainerHigh)
+    val activitySurface = glassSurface(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh)
+    val userContent = glassContentColor(GlassSurface.USER_BUBBLE, MaterialTheme.colorScheme.primaryContainer)
+    val assistantContent = glassContentColor(GlassSurface.ASSISTANT_BUBBLE, MaterialTheme.colorScheme.surfaceContainerHigh)
     groupedParts.fastForEach { block ->
         when (block) {
             is MessagePartBlock.ThinkingBlock -> {
@@ -349,7 +358,8 @@ private fun MessagePartsBlock(
                         collapsedAdaptiveWidth = isReasoningOnlyBlock,
                         forceExpanded = hasPendingApproval,
                         cardColors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = settings.displaySetting.bubbleOpacity),
+                            containerColor = activitySurface.container.copy(alpha = activitySurface.container.alpha * settings.displaySetting.bubbleOpacity),
+                            contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
                         ),
                     ) { step ->
                         when (step) {
@@ -400,8 +410,10 @@ private fun MessagePartsBlock(
                             if (role == MessageRole.USER) {
                                 Surface(
                                     modifier = Modifier.animateContentSize(),
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = settings.displaySetting.bubbleOpacity),
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = userBubble.container.copy(alpha = userBubble.container.alpha * settings.displaySetting.bubbleOpacity),
+                                    contentColor = userContent,
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, userBubble.border),
                                     onClick = { onUserMessageClick?.invoke() },
                                 ) {
                                     Column(modifier = Modifier.padding(8.dp)) {
@@ -419,8 +431,10 @@ private fun MessagePartsBlock(
                                 if (settings.displaySetting.showAssistantBubble) {
                                     Surface(
                                         modifier = Modifier.animateContentSize(),
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = settings.displaySetting.bubbleOpacity),
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = assistantBubble.container.copy(alpha = assistantBubble.container.alpha * settings.displaySetting.bubbleOpacity),
+                                        contentColor = assistantContent,
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, assistantBubble.border),
                                     ) {
                                         Column(modifier = Modifier.padding(8.dp)) {
                                             MarkdownBlock(
@@ -481,7 +495,10 @@ private fun MessagePartsBlock(
                                 context.startActivity(chooserIndent)
                             },
                             modifier = Modifier,
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(18.dp),
+                            color = activitySurface.container,
+                            contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, activitySurface.border),
                         ) {
                             Box(modifier = Modifier.size(72.dp), contentAlignment = Alignment.Center) {
                                 Icon(HugeIcons.Video01, null)
@@ -504,8 +521,10 @@ private fun MessagePartsBlock(
                                 context.startActivity(chooserIndent)
                             },
                             modifier = Modifier,
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.secondaryContainer
+                            shape = RoundedCornerShape(20.dp),
+                            color = activitySurface.container,
+                            contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, activitySurface.border),
                         ) {
                             ProvideTextStyle(MaterialTheme.typography.labelSmall) {
                                 Row(

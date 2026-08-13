@@ -40,8 +40,9 @@ fun glassSurface(surface: GlassSurface, fallback: Color): ResolvedGlassSurface {
     // so they can read as light floating above glass instead of heavy opaque cards.
     val tint = override?.tintArgb?.let(::Color) ?: Color(appearance.tintArgb)
     val requestedOpacity = (override?.transparency ?: appearance.transparency).coerceIn(0.08f, 0.98f)
-    // Compress the visual range slightly: both low and high slider values remain visibly glassy.
-    val opacity = (0.08f + requestedOpacity * 0.72f).coerceIn(0.14f, 0.82f)
+    // Preserve a genuinely translucent Black Silence surface at every slider position.
+    // The deep canvas remains visible; panels float above it instead of forming opaque stacks.
+    val opacity = (0.06f + requestedOpacity * 0.74f).coerceIn(0.12f, 0.80f)
     val borderOpacity = (override?.borderOpacity ?: appearance.borderOpacity).coerceIn(0f, 1f)
     val highlightOpacity = (override?.highlightOpacity ?: appearance.highlightOpacity).coerceIn(0f, 1f)
     val blurEnabled = override?.blurEnabled ?: appearance.blurEnabled
@@ -50,8 +51,8 @@ fun glassSurface(surface: GlassSurface, fallback: Color): ResolvedGlassSurface {
     return ResolvedGlassSurface(
         enabled = true,
         container = tint.copy(alpha = opacity),
-        border = Color.White.copy(alpha = borderOpacity * 0.72f),
-        highlight = Color.White.copy(alpha = highlightOpacity * 0.64f),
+        border = Color(0xFFE3F4FF).copy(alpha = borderOpacity * 0.46f),
+        highlight = Color.White.copy(alpha = highlightOpacity * 0.48f),
         blurEnabled = blurEnabled,
         blurIntensity = blurIntensity,
     )

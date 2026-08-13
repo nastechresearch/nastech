@@ -21,12 +21,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.nastechresearch.nastech.Screen
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.ui.components.ui.Favicon
 import io.github.nastechresearch.nastech.ui.components.webview.WebContent
 import io.github.nastechresearch.nastech.ui.components.webview.WebView
 import io.github.nastechresearch.nastech.ui.components.webview.WebViewState
 import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 private val sharedUrlPattern = Regex("""https?://[^\\s<>]+""")
@@ -67,9 +70,14 @@ private fun InChatYoutubePreview(videoId: String) {
             ),
         )
     }
+    val previewSurface = glassSurface(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh)
     Card(
         shape = RoundedCornerShape(22.dp),
-        colors = CustomColors.cardColors,
+        border = androidx.compose.foundation.BorderStroke(1.dp, previewSurface.border),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = previewSurface.container,
+            contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+        ),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
@@ -98,9 +106,14 @@ private fun InChatYoutubePreview(videoId: String) {
 
 @Composable
 private fun InChatImagePreview(url: String) {
+    val previewSurface = glassSurface(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh)
     Card(
         shape = RoundedCornerShape(22.dp),
-        colors = CustomColors.cardColors,
+        border = androidx.compose.foundation.BorderStroke(1.dp, previewSurface.border),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = previewSurface.container,
+            contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+        ),
         modifier = Modifier.fillMaxWidth(),
     ) {
         AsyncImage(
@@ -120,10 +133,15 @@ private fun InChatLinkPreview(url: String, onClick: () -> Unit) {
     val parsed = remember(url) { url.toHttpUrlOrNull() }
     val host = parsed?.host?.removePrefix("www.") ?: "Linked content"
     val path = parsed?.encodedPath?.takeIf { it.isNotBlank() && it != "/" } ?: "Open securely inside Nastech"
+    val previewSurface = glassSurface(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh)
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(22.dp),
-        colors = CustomColors.cardColors,
+        border = androidx.compose.foundation.BorderStroke(1.dp, previewSurface.border),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = previewSurface.container,
+            contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+        ),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(

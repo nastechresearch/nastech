@@ -37,8 +37,11 @@ import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.Download01
 import io.github.nastechresearch.nastech.BuildConfig
 import io.github.nastechresearch.nastech.R
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.ui.components.richtext.MarkdownBlock
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.ui.hooks.useThrottle
 import io.github.nastechresearch.nastech.ui.pages.chat.ChatVM
 import io.github.nastechresearch.nastech.utils.UpdateDownload
@@ -57,7 +60,15 @@ fun UpdateCard(vm: ChatVM, compact: Boolean = false) {
     val context = LocalContext.current
     val toaster = LocalToaster.current
     state.onError {
-        Card {
+        val alertSurface = glassSurface(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh)
+        Card(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, alertSurface.border),
+            colors = androidx.compose.material3.CardDefaults.cardColors(
+                containerColor = alertSurface.container,
+                contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+            ),
+        ) {
             Column(
                 modifier = Modifier
                     .padding(8.dp)
@@ -83,10 +94,17 @@ fun UpdateCard(vm: ChatVM, compact: Boolean = false) {
         val current = remember { Version(BuildConfig.VERSION_NAME) }
         val latest = remember(info) { Version(info.version) }
         if (latest > current && !dismissed) {
+            val updateSurface = glassSurface(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh)
             Card(
                 onClick = {
                     showDetail = true
-                }
+                },
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, updateSurface.border),
+                colors = androidx.compose.material3.CardDefaults.cardColors(
+                    containerColor = updateSurface.container,
+                    contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+                ),
             ) {
                 Column(
                     modifier = Modifier

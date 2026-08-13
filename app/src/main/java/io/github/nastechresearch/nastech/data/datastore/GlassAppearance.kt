@@ -12,12 +12,12 @@ data class GlassAppearance(
     /** Black Silence is the single reusable surface system used across Nastech. */
     val colorFamily: BlackSilenceColorFamily = BlackSilenceColorFamily.OBSIDIAN_NEON,
     val pureBlack: Boolean = true,
-    val tintArgb: Long = 0xFF071A2D,
+    val tintArgb: Long = BlackSilenceColorFamily.OBSIDIAN_NEON.surfaceTintArgb,
     val transparency: Float = 0.86f,
     val blurEnabled: Boolean = true,
     val blurIntensity: Float = 0.52f,
-    val borderOpacity: Float = 0.34f,
-    val highlightOpacity: Float = 0.20f,
+    val borderOpacity: Float = 0.30f,
+    val highlightOpacity: Float = 0.18f,
     val saturation: Float = 1.03f,
     val backgroundBrightness: Float = 0.92f,
     val motionEnabled: Boolean = true,
@@ -28,7 +28,7 @@ data class GlassAppearance(
     /** Contrast-safe AMOLED defaults; users can still override each foreground color. */
     val primaryTextArgb: Long? = 0xFFF5F9FF,
     val secondaryTextArgb: Long? = 0xFFB8D9FF,
-    val accentArgb: Long? = 0xFF76B8FF,
+    val accentArgb: Long? = BlackSilenceColorFamily.OBSIDIAN_NEON.accentArgb,
     /** Multiplier applied to the entire Compose font scale, from compact to accessibility-friendly. */
     val textScale: Float = 1.0f,
     val surfaceOverrides: Map<GlassSurface, GlassSurfaceAppearance> = emptyMap(),

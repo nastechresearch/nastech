@@ -32,9 +32,11 @@ val LocalExtendColors = compositionLocalOf { ExtendLightColors }
 val LocalDarkMode = compositionLocalOf { false }
 
 private val AMOLED_DARK_BACKGROUND = Color(0xFF000000)
-private val BLACK_SILENCE_SURFACE = Color(0xFF080C12)
-private val BLACK_SILENCE_SURFACE_LOW = Color(0xFF0B1018)
-private val BLACK_SILENCE_SURFACE_HIGH = Color(0xFF101722)
+// Semi-transparent Material layers let the ambient Black Silence blooms remain visible
+// behind standard Compose cards, dialogs, menus, and sheets across the whole app.
+private val BLACK_SILENCE_SURFACE = Color(0xBC080C12)
+private val BLACK_SILENCE_SURFACE_LOW = Color(0xC90B1018)
+private val BLACK_SILENCE_SURFACE_HIGH = Color(0xD6101722)
 private val AMOLED_TEXT = Color(0xFFF5F9FF)
 private val AMOLED_SECONDARY_TEXT = Color(0xFFB8D9FF)
 private val AMOLED_LIGHT_BLUE = Color(0xFF76B8FF)
@@ -77,28 +79,30 @@ fun NastechTheme(
             colorScheme.copy(
                 background = AMOLED_DARK_BACKGROUND,
                 surface = BLACK_SILENCE_SURFACE,
+                surfaceDim = Color(0xA605070B),
+                surfaceBright = Color(0xD9141D2A),
                 surfaceVariant = BLACK_SILENCE_SURFACE_LOW,
-                surfaceContainerLowest = Color(0xFF05070B),
+                surfaceContainerLowest = Color(0xA805070B),
                 surfaceContainerLow = BLACK_SILENCE_SURFACE,
                 surfaceContainer = BLACK_SILENCE_SURFACE_LOW,
                 surfaceContainerHigh = BLACK_SILENCE_SURFACE_HIGH,
-                surfaceContainerHighest = Color(0xFF162131),
+                surfaceContainerHighest = Color(0xE3162131),
                 primary = AMOLED_LIGHT_BLUE,
                 onPrimary = AMOLED_DARK_BACKGROUND,
-                primaryContainer = Color(0xFF0B3157),
+                primaryContainer = Color(0xC20B3157),
                 onPrimaryContainer = AMOLED_TEXT,
                 secondary = AMOLED_MINT,
                 onSecondary = AMOLED_DARK_BACKGROUND,
-                secondaryContainer = Color(0xFF0D302C),
+                secondaryContainer = Color(0xC20D302C),
                 onSecondaryContainer = AMOLED_TEXT,
                 tertiary = Color(0xFF91D8C4),
                 onTertiary = AMOLED_DARK_BACKGROUND,
-                tertiaryContainer = Color(0xFF12372F),
+                tertiaryContainer = Color(0xC212372F),
                 onTertiaryContainer = AMOLED_TEXT,
                 onBackground = AMOLED_TEXT,
                 onSurface = AMOLED_TEXT,
                 onSurfaceVariant = AMOLED_SECONDARY_TEXT,
-                outline = AMOLED_SECONDARY_TEXT.copy(alpha = 0.72f),
+                outline = AMOLED_SECONDARY_TEXT.copy(alpha = 0.42f),
             )
         } else {
             colorScheme
