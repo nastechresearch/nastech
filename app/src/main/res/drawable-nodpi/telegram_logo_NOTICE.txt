@@ -1,0 +1,3 @@
+Telegram logo asset source: https://telegram.org/tour/screenshots
+Telegram permits use of its logos for illustrations and “forward to Telegram” buttons provided the use does not imply official representation.
+Used by Nastech only to identify its optional Telegram integration.

@@ -229,6 +229,7 @@ class SettingsStore(
 
         // Welcome and terms acknowledgement
         val ONBOARDING_ACCEPTED_VERSION = stringPreferencesKey("onboarding_accepted_version")
+        val ONBOARDING_RATING = intPreferencesKey("onboarding_rating")
 
         // 统计
         val LAUNCH_COUNT = intPreferencesKey("launch_count")
@@ -414,6 +415,7 @@ class SettingsStore(
                     }
                 } ?: GlassAppearance(),
                 onboardingAcceptedVersion = preferences[ONBOARDING_ACCEPTED_VERSION] ?: "",
+                onboardingRating = preferences[ONBOARDING_RATING] ?: 0,
                 launchCount = preferences[LAUNCH_COUNT] ?: 0,
             )
         }
@@ -702,6 +704,7 @@ class SettingsStore(
             preferences[BACKUP_REMINDER_CONFIG] = JsonInstant.encodeToString(settings.backupReminderConfig)
             preferences[GLASS_APPEARANCE] = JsonInstant.encodeToString(settings.glassAppearance)
             preferences[ONBOARDING_ACCEPTED_VERSION] = settings.onboardingAcceptedVersion
+            preferences[ONBOARDING_RATING] = settings.onboardingRating
             preferences[LAUNCH_COUNT] = settings.launchCount
         }
         settingsFlow.value = settings
@@ -896,6 +899,8 @@ data class Settings(
     val backupReminderConfig: BackupReminderConfig = BackupReminderConfig(),
     val glassAppearance: GlassAppearance = GlassAppearance(),
     val onboardingAcceptedVersion: String = "",
+    /** Optional local first-launch feedback rating. Zero means not rated. */
+    val onboardingRating: Int = 0,
     val launchCount: Int = 0,
 ) {
     companion object {
