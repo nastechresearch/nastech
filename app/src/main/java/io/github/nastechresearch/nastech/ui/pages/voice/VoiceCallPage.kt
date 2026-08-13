@@ -37,7 +37,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -168,7 +168,7 @@ fun VoiceCallPage(id: Uuid) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            VoiceRoundButton(onClick = finishCall, icon = HugeIcons.Cancel01, description = "End voice call")
+            VoiceRoundButton(onClick = { finishCall() }, icon = HugeIcons.Cancel01, description = "End voice call")
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Nastech Voice", style = MaterialTheme.typography.titleMedium, color = Color.White)
                 Text(mode.label, style = MaterialTheme.typography.labelMedium, color = Color(0xFFBAC6FF))
@@ -225,7 +225,7 @@ fun VoiceCallPage(id: Uuid) {
                     Icon(HugeIcons.Mic01, contentDescription = if (mode == VoiceCallMode.LISTENING) "Finish speaking" else "Start speaking")
                 }
                 FilledTonalButton(
-                    onClick = finishCall,
+                    onClick = { finishCall() },
                     shape = CircleShape,
                     modifier = Modifier.size(72.dp),
                 ) {

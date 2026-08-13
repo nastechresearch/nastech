@@ -537,6 +537,7 @@ private fun SettingsQuickTile(
     }
 }
 
+@Composable
 private fun ProviderConfigWarningCard(navController: Navigator) {
     Card(
         modifier = Modifier.padding(8.dp),
