@@ -460,6 +460,9 @@ private fun MessagePartsBlock(
                                     textContent()
                                 }
                             }
+                            if (role != MessageRole.USER) {
+                                ChatRichPreview(part.text)
+                            }
                         }
                     }
 

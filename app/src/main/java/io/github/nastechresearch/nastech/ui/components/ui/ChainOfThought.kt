@@ -73,7 +73,7 @@ fun <T> ChainOfThought(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
     ),
     steps: List<T>,
-    collapsedVisibleCount: Int = 2,
+    collapsedVisibleCount: Int = 1,
     collapsedAdaptiveWidth: Boolean = false,
     forceExpanded: Boolean = false,
     content: @Composable ChainOfThoughtScope.(T) -> Unit
@@ -138,10 +138,7 @@ fun <T> ChainOfThought(
                             text = if (expanded) {
                                 stringResource(R.string.chain_of_thought_collapse)
                             } else {
-                                stringResource(
-                                    R.string.chain_of_thought_show_more_steps,
-                                    steps.size - collapsedVisibleCount
-                                )
+                                "Working · ${steps.size} activity updates"
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
