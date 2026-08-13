@@ -140,7 +140,7 @@ class OpenCodeProvider(
             if (text.isBlank() || text == previousAssistantText) return@repeat
             stablePolls = if (text == latest) stablePolls + 1 else 0
             latest = text
-            if (snapshot.finished || stablePolls >= STABLE_TEXT_POLLS) return latest
+            if (snapshot?.finished == true || stablePolls >= STABLE_TEXT_POLLS) return latest
         }
         if (latest.isNotBlank() && latest != previousAssistantText) return latest
         error("Timed out waiting for OpenCode to complete the session response")
