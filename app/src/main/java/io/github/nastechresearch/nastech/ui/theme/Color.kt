@@ -177,24 +177,39 @@ object CustomColors {
         @Composable get() {
             val fallback = colorScheme.surfaceContainer
             val container = glassSurface(GlassSurface.TOP_BAR, fallback).container
+            val content = glassContentColor(GlassSurface.TOP_BAR, fallback)
             return TopAppBarDefaults.topAppBarColors(
                 containerColor = container,
                 scrolledContainerColor = container,
+                titleContentColor = content,
+                navigationIconContentColor = content,
+                actionIconContentColor = content,
             )
         }
 
     val cardColors: CardColors
         @Composable get() = CardDefaults.cardColors(
             containerColor = glassSurface(GlassSurface.CARD, colorScheme.surfaceContainer).container,
+            contentColor = glassContentColor(GlassSurface.CARD, colorScheme.surfaceContainer),
         )
 
     val cardColorsOnSurfaceContainer: CardColors
         @Composable get() = CardDefaults.cardColors(
             containerColor = glassSurface(GlassSurface.CARD, colorScheme.surfaceBright).container,
+            contentColor = glassContentColor(GlassSurface.CARD, colorScheme.surfaceBright),
         )
 
     val listItemColors: ListItemColors
-        @Composable get() = ListItemDefaults.colors(
-            containerColor = glassSurface(GlassSurface.LIST_ITEM, colorScheme.surfaceBright).container,
-        )
+        @Composable get() {
+            val fallback = colorScheme.surfaceBright
+            val content = glassContentColor(GlassSurface.LIST_ITEM, fallback)
+            return ListItemDefaults.colors(
+                containerColor = glassSurface(GlassSurface.LIST_ITEM, fallback).container,
+                headlineColor = content,
+                overlineColor = content.copy(alpha = 0.78f),
+                supportingColor = content.copy(alpha = 0.78f),
+                leadingIconColor = content,
+                trailingIconColor = content,
+            )
+        }
 }

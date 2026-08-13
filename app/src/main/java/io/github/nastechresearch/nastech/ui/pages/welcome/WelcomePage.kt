@@ -158,10 +158,21 @@ private fun WelcomeTerms(accepted: Boolean, onAcceptedChange: (Boolean) -> Unit)
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Switch(checked = accepted, onCheckedChange = onAcceptedChange)
+            Switch(
+                checked = accepted,
+                onCheckedChange = onAcceptedChange,
+                colors = androidx.compose.material3.SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    uncheckedBorderColor = MaterialTheme.colorScheme.outline,
+                ),
+            )
             Text(
                 "I have reviewed and accept the Nastech Terms, Privacy information, and licence notices.",
                 modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
@@ -179,7 +190,7 @@ private fun WelcomeCard(title: String, body: String) {
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
             Text(body, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
