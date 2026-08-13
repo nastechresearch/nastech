@@ -24,16 +24,16 @@ val RECOMMENDED_PROVIDERS: List<ProviderSetting> = listOf(
         description = {
             Text(
                 text = buildAnnotatedString {
-                    append("提供 OpenAI、Claude、Google Gemini 等主流模型的高并发和稳定服务")
+                    append("Provides high-concurrency, stable services for mainstream models such as OpenAI, Claude, and Google Gemini")
                     appendLine()
-                    append("官网：")
+                    append("Official website:")
                     withLink(LinkAnnotation.Url("https://aihubmix.com?aff=pG7r")) {
                         withStyle(SpanStyle(MaterialTheme.colorScheme.primary)) {
                             append("https://aihubmix.com")
                         }
                     }
                     appendLine()
-                    append("充值: ")
+                    append("Top-up: ")
                     withLink(LinkAnnotation.Url("https://console.aihubmix.com/topup")) {
                         withStyle(SpanStyle(MaterialTheme.colorScheme.primary)) {
                             append("https://console.aihubmix.com/topup")
@@ -45,16 +45,16 @@ val RECOMMENDED_PROVIDERS: List<ProviderSetting> = listOf(
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("aecf04fd-cb5c-4582-aed2-e8bf393923fd"),
-        name = "随想AI网关",
+        name = "SuiXiang AI Gateway",
         baseUrl = "https://sui-xiang.com/v1",
         apiKey = "",
         enabled = true,
         description = {
             Text(
                 text = buildAnnotatedString {
-                    append("可靠高效的 API 中继服务，提供 Claude、Codex、Gemini 等中继服务。注重隐私·无数据倒卖·无模型掺水，充值额度 1:1，按量付费。多线路冗余、跨区域容灾、自动故障切换，长链路 SSE 不中断。")
+                    append("Reliable and efficient API relay service, providing relay services for Claude, Codex, Gemini, etc. Privacy-focused·no data resale·no model tampering, top-up credit at 1:1, pay-as-you-go. Multi-line redundancy, cross-region disaster recovery, automatic failover, long-lived SSE connections remain uninterrupted.")
                     appendLine()
-                    append("官网：")
+                    append("Official website:")
                     withLink(LinkAnnotation.Url("https://sui-xiang.com")) {
                         withStyle(SpanStyle(MaterialTheme.colorScheme.primary)) {
                             append("https://sui-xiang.com")

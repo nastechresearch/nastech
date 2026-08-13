@@ -184,9 +184,9 @@ private fun MainPage(vm: DebugVM) {
         val toaster = LocalToaster.current
         Button(
             onClick = {
-                toaster.show("测试 ${counter++}")
-                toaster.show("测试 ${counter++}", type = ToastType.Info)
-                toaster.show("测试 ${counter++}", type = ToastType.Error)
+                toaster.show("Test ${counter++}")
+                toaster.show("Test ${counter++}", type = ToastType.Info)
+                toaster.show("Test ${counter++}", type = ToastType.Error)
             }
         ) {
             Text("toast")
@@ -200,15 +200,15 @@ private fun MainPage(vm: DebugVM) {
                 )
             }
         ) {
-            Text("重置Chat模型")
+            Text("Reset Chat model")
         }
 
         Button(
             onClick = {
-                error("测试崩溃 ${Random.nextInt(0..1000)}")
+                error("Test crash ${Random.nextInt(0..1000)}")
             }
         ) {
-            Text("崩溃")
+            Text("Crash")
         }
 
         Row(
@@ -216,30 +216,30 @@ private fun MainPage(vm: DebugVM) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Conversation 数量: ${conversationCount?.toString() ?: "..."}",
+                text = "Conversation count: ${conversationCount?.toString() ?: "..."}",
                 modifier = Modifier.weight(1f),
             )
             Button(onClick = { vm.refreshConversationCount() }) {
-                Text("刷新")
+                Text("Refresh")
             }
         }
 
         Button(
             onClick = {
                 vm.createOversizedConversation(30)
-                toaster.show("正在创建 30MB 超大对话...")
+                toaster.show("Creating a 30MB massive conversation...")
             }
         ) {
-            Text("创建超大对话 (30MB)")
+            Text("Create a huge conversation (30MB)")
         }
 
         Button(
             onClick = {
                 vm.createConversationWithMessages(1024)
-                toaster.show("正在创建 1024 条消息对话...")
+                toaster.show("Creating 1024 message conversations...")
             }
         ) {
-            Text("创建 1024 个消息的聊天")
+            Text("Create a chat with 1024 messages")
         }
 
         HorizontalDivider()

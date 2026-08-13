@@ -515,9 +515,9 @@ private data class QQGroup(
 )
 
 private val QQ_GROUPS = listOf(
-    QQGroup("Nastech 一群", "4POE46u9e_zoy1TkNfWdCvueR9CKFJdk"),
-    QQGroup("Nastech 二群", "Qsm0whzbPsm1UyNpR683ulLyMZ2Pqrw0"),
-    QQGroup("Nastech 三群", "Qc9oP-9tXioZeQEvEvI2_owWtBAIx3lS"),
+    QQGroup("Nastech Group 1", "4POE46u9e_zoy1TkNfWdCvueR9CKFJdk"),
+    QQGroup("Nastech Group 2", "Qsm0whzbPsm1UyNpR683ulLyMZ2Pqrw0"),
+    QQGroup("Nastech Group 3", "Qc9oP-9tXioZeQEvEvI2_owWtBAIx3lS"),
 )
 
 @Composable

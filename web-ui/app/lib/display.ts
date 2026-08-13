@@ -4,7 +4,7 @@ export function getDisplayName(value: string | null | undefined, fallback: strin
 }
 
 export function getAssistantDisplayName(name: string | null | undefined): string {
-  return getDisplayName(name, "默认助手");
+  return getDisplayName(name, "Default Assistant");
 }
 
 export function getModelDisplayName(
@@ -16,5 +16,5 @@ export function getModelDisplayName(
     return normalizedDisplayName;
   }
 
-  return getDisplayName(modelId, "未命名模型");
+  return getDisplayName(modelId, "Unnamed model");
 }

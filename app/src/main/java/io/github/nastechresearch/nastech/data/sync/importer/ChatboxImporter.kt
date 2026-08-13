@@ -576,6 +576,7 @@ object ChatboxImporter {
         is ProviderSetting.Codex -> "codex"
         is ProviderSetting.Grok -> "grok"
         is ProviderSetting.GeminiOAuth -> "gemini_oauth"
+        is ProviderSetting.OpenCode -> "opencode"
     }
 
     private fun millisToLocalDateTime(timestamp: Long?) =

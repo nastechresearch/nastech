@@ -108,12 +108,12 @@ fun String.extractQuotedContent(): List<String> {
     val result = mutableListOf<String>()
     // 匹配多种引号类型
     val patterns = listOf(
-        "\u201C([^\u201D]*?)\u201D",  // 中文双引号
-        "\u2018([^\u2019]*?)\u2019",  // 中文单引号
-        """"([^"]*?)"""",  // 英文双引号
-        """'([^']*?)'""",  // 英文单引号
-        """「([^」]*?)」""",           // 直角引号
-        """『([^』]*?)』""",           // 白直角引号
+        "\u201C([^\u201D]*?)\u201D",  // Chinese double quotation marks
+        "\u2018([^\u2019]*?)\u2019",  // Chinese single quotation marks
+        """"([^"]*?)"""",  // English double quotes
+        """'([^']*?)'""",  // English single quotes
+        """「([^」]*?)」""",           // corner quotation marks
+        """『([^』]*?)』""",           // White corner quotation marks
     )
     for (pattern in patterns) {
         val regex = Regex(pattern)

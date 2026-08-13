@@ -9,8 +9,8 @@ import kotlin.uuid.Uuid
 @Serializable
 data class BalanceOption(
     val enabled: Boolean = false, // 是否开启余额获取功能
-    val apiPath: String = "/credits", // 余额获取API路径
-    val resultPath: String = "data.total_usage", // 余额获取JSON路径
+    val apiPath: String = "/credits", // Balance retrieval API path
+    val resultPath: String = "data.total_usage", // JSON path for retrieving balance
 )
 
 @Serializable
@@ -516,6 +516,58 @@ sealed class ProviderSetting {
         }
     }
 
+    @Serializable
+    @SerialName("opencode")
+    data class OpenCode(
+        override var id: Uuid = Uuid.random(),
+        override var enabled: Boolean = true,
+        override var name: String = "OpenCode",
+        override var models: List<Model> = emptyList(),
+        override val balanceOption: BalanceOption = BalanceOption(),
+        @Transient override val builtIn: Boolean = false,
+        @Transient override val description: @Composable (() -> Unit) = {},
+        @Transient override val shortDescription: @Composable (() -> Unit) = {},
+        /** Base URL of the user-operated OpenCode server, without a trailing slash. */
+        var serverUrl: String = "http://localhost:4096",
+        /** Optional basic-auth user configured on the OpenCode server. */
+        var username: String = "",
+        /** Optional basic-auth password configured on the OpenCode server. */
+        var password: String = "",
+        /** Optional existing OpenCode session. Empty values cause Nastech to create one. */
+        var sessionId: String = "",
+    ) : ProviderSetting() {
+        override fun addModel(model: Model): ProviderSetting = copy(models = models + model)
+
+        override fun editModel(model: Model): ProviderSetting =
+            copy(models = models.map { if (it.id == model.id) model.copy() else it })
+
+        override fun delModel(model: Model): ProviderSetting =
+            copy(models = models.filter { it.id != model.id })
+
+        override fun moveMove(from: Int, to: Int): ProviderSetting =
+            copy(models = models.toMutableList().apply { add(to, removeAt(from)) })
+
+        override fun copyProvider(
+            id: Uuid,
+            enabled: Boolean,
+            name: String,
+            models: List<Model>,
+            balanceOption: BalanceOption,
+            builtIn: Boolean,
+            description: @Composable (() -> Unit),
+            shortDescription: @Composable (() -> Unit),
+        ): ProviderSetting = copy(
+            id = id,
+            enabled = enabled,
+            name = name,
+            models = models,
+            balanceOption = balanceOption,
+            builtIn = builtIn,
+            description = description,
+            shortDescription = shortDescription,
+        )
+    }
+
     companion object {
         // Types presented to the user when adding / converting a provider. AICore is
         // intentionally NOT in this list: it is a singleton built-in (one per device,
@@ -528,6 +580,7 @@ sealed class ProviderSetting {
                 OpenAI::class,
                 Google::class,
                 Claude::class,
+                OpenCode::class,
             )
         }
     }

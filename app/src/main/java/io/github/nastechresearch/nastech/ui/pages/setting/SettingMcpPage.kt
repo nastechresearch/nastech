@@ -404,7 +404,7 @@ private fun McpServerItem(
                     if (status == McpStatus.NeedsAuthorization) {
                         val context = LocalContext.current
                         Text(
-                            text = "需要 OAuth 授权",
+                            text = "Requires OAuth authorization",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -412,19 +412,19 @@ private fun McpServerItem(
                             onClick = { mcpManager.startAuthorization(item, context) },
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                         ) {
-                            Text("OAuth 授权")
+                            Text("OAuth Authorization")
                         }
                     }
                     if (status == McpStatus.Authorizing) {
                         Text(
-                            text = "正在授权，请在浏览器中完成…",
+                            text = "Authorizing, please complete in your browser…",
                             style = MaterialTheme.typography.labelSmall,
                         )
                         TextButton(
                             onClick = { mcpManager.cancelAuthorization(item) },
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                         ) {
-                            Text("取消授权")
+                            Text("Cancel Authorization")
                         }
                     }
                 }

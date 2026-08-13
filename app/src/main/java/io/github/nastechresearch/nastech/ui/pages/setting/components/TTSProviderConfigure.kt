@@ -46,6 +46,7 @@ fun TTSProviderConfigure(
                     is TTSProviderSetting.XAI -> "xAI"
                     is TTSProviderSetting.MiMo -> "MiMo"
                     is TTSProviderSetting.Step -> "Step"
+                    is TTSProviderSetting.KokoroFastAPI -> "Kokoro (self-hosted)"
                     is TTSProviderSetting.ElevenLabs -> "ElevenLabs"
                     is TTSProviderSetting.FishAudio -> "Fish Audio"
                 },
@@ -65,6 +66,7 @@ fun TTSProviderConfigure(
                         TTSProviderSetting.ElevenLabs::class -> "ElevenLabs"
                         TTSProviderSetting.FishAudio::class -> "Fish Audio"
                         TTSProviderSetting.Step::class -> "Step"
+                        TTSProviderSetting.KokoroFastAPI::class -> "Kokoro (self-hosted)"
                         else -> providerClass.simpleName ?: "Unknown"
                     }
                 },
@@ -125,6 +127,11 @@ fun TTSProviderConfigure(
                             name = "Step TTS"
                         )
 
+                        TTSProviderSetting.KokoroFastAPI::class -> TTSProviderSetting.KokoroFastAPI(
+                            id = setting.id,
+                            name = "Kokoro TTS"
+                        )
+
                         else -> setting
                     }
                     onValueChange(newSetting)
@@ -160,6 +167,7 @@ fun TTSProviderConfigure(
             is TTSProviderSetting.ElevenLabs -> ElevenLabsTTSConfiguration(setting, onValueChange)
             is TTSProviderSetting.FishAudio -> FishAudioTTSConfiguration(setting, onValueChange)
             is TTSProviderSetting.Step -> StepTTSConfiguration(setting, onValueChange)
+            is TTSProviderSetting.KokoroFastAPI -> KokoroTTSConfiguration(setting, onValueChange)
         }
     }
 }
@@ -231,6 +239,74 @@ private fun OpenAITTSConfiguration(
                 onValueChange(setting.copy(voice = voice))
             },
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun KokoroTTSConfiguration(
+    setting: TTSProviderSetting.KokoroFastAPI,
+    onValueChange: (TTSProviderSetting) -> Unit,
+) {
+    FormItem(
+        label = { Text("Server URL") },
+        description = { Text("OpenAI-compatible Kokoro-FastAPI root URL, usually http://host:8880/v1") },
+    ) {
+        OutlinedTextField(
+            value = setting.baseUrl,
+            onValueChange = { onValueChange(setting.copy(baseUrl = it)) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("http://localhost:8880/v1") },
+        )
+    }
+
+    FormItem(
+        label = { Text("API token (optional)") },
+        description = { Text("Leave empty unless your self-hosted server requires bearer authentication.") },
+    ) {
+        OutlinedTextField(
+            value = setting.apiKey,
+            onValueChange = { onValueChange(setting.copy(apiKey = it)) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Optional bearer token") },
+        )
+    }
+
+    FormItem(
+        label = { Text(stringResource(R.string.setting_tts_page_model)) },
+        description = { Text("Kokoro-FastAPI model identifier.") },
+    ) {
+        OutlinedTextField(
+            value = setting.model,
+            onValueChange = { onValueChange(setting.copy(model = it)) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("kokoro") },
+        )
+    }
+
+    FormItem(
+        label = { Text(stringResource(R.string.setting_tts_page_voice)) },
+        description = { Text("Kokoro voice identifier, for example af_bella.") },
+    ) {
+        OutlinedTextField(
+            value = setting.voice,
+            onValueChange = { onValueChange(setting.copy(voice = it)) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("af_bella") },
+        )
+    }
+
+    val responseFormats = listOf("mp3", "wav", "opus", "aac", "pcm")
+    FormItem(
+        label = { Text("Response format") },
+        description = { Text("Audio format requested from the self-hosted Kokoro server.") },
+    ) {
+        SelectTextField(
+            value = setting.responseFormat,
+            options = responseFormats,
+            onValueChange = { onValueChange(setting.copy(responseFormat = it)) },
+            onOptionSelected = { onValueChange(setting.copy(responseFormat = it)) },
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -922,8 +998,8 @@ private fun FishAudioTTSConfiguration(
 
     // Model (下拉选择框 + 文本输入框，完全同 ElevenLabs 格式)
     val models = listOf(
-        "s2.1-pro" to "S2.1-Pro (推荐)",
-        "s2.1-pro-free" to "S2.1-Pro Free (免费)",
+        "s2.1-pro" to "S2.1-Pro (Recommended)",
+        "s2.1-pro-free" to "S2.1-Pro Free (Free)",
         "s2-pro" to "S2-Pro",
         "s1" to "S1"
     )
@@ -1000,7 +1076,7 @@ private fun StepTTSConfiguration(
     // API Key
     FormItem(
         label = { Text(stringResource(R.string.setting_tts_page_api_key)) },
-        description = { Text("从阶跃星辰官网获取密钥: platform.stepfun.com/interface-key") }
+        description = { Text("Get the key from the Stepfun official website: platform.stepfun.com/interface-key") }
     ) {
         OutlinedTextField(
             value = setting.apiKey,
@@ -1008,7 +1084,7 @@ private fun StepTTSConfiguration(
                 onValueChange(setting.copy(apiKey = newApiKey))
             },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("从阶跃星辰官网获取密钥") },
+            placeholder = { Text("Get the key from the Stepped Stars official website") },
         )
     }
 
@@ -1029,10 +1105,10 @@ private fun StepTTSConfiguration(
 
     // Model
     val models = listOf(
-        "step-tts-mini" to "step-tts-mini (轻量, 便宜)",
-        "step-tts-vivid" to "step-tts-vivid (情感丰富)",
-        "stepaudio-2.5-tts" to "stepaudio-2.5-tts (语境感知, 支持 instruction)",
-        "step-tts-2" to "step-tts-2 (上一代)",
+        "step-tts-mini" to "step-tts-mini (lightweight, inexpensive)",
+        "step-tts-vivid" to "step-tts-vivid (emotionally rich)",
+        "stepaudio-2.5-tts" to "stepaudio-2.5-tts (context-aware, supports instruction)",
+        "step-tts-2" to "step-tts-2 (previous generation)",
     )
 
     FormItem(
@@ -1057,37 +1133,37 @@ private fun StepTTSConfiguration(
     // 部分常用 voice-id, 完整列表见官方开发指南
     // https://platform.stepfun.com/docs/zh/guides/developer/tts
     val voices = listOf(
-        "elegantgentle-female" to "气质温婉 (elegantgentle-female)",
-        "livelybreezy-female" to "活力轻快 (livelybreezy-female)",
-        "energeticconfident-female" to "活力自信 (energeticconfident-female)",
-        "jingdiannvsheng" to "经典女声 (jingdiannvsheng)",
-        "wenroushunv" to "温柔熟女 (wenroushunv)",
-        "tianmeinvsheng" to "甜美女声 (tianmeinvsheng)",
-        "qingchunshaonv" to "清纯少女 (qingchunshaonv)",
-        "wenrounvsheng" to "温柔女声 (wenrounvsheng)",
-        "ruanmengnvsheng" to "软萌女生 (ruanmengnvsheng)",
-        "youyanvsheng" to "优雅女生 (youyanvsheng)",
-        "lengyanyujie" to "冷艳御姐 (lengyanyujie)",
-        "shuangkuaijiejie" to "爽快姐姐 (shuangkuaijiejie)",
-        "wenjingxuejie" to "文静学姐 (wenjingxuejie)",
-        "linjiajiejie" to "邻家姐姐 (linjiajiejie)",
-        "linjiameimei" to "邻家妹妹 (linjiameimei)",
-        "zhixingjiejie" to "知性姐姐 (zhixingjiejie)",
-        "cixingnansheng" to "磁性男声 (cixingnansheng)",
-        "wenrounansheng" to "温柔男声 (wenrounansheng)",
-        "yuanqinansheng" to "元气男声 (yuanqinansheng)",
-        "zhengpaiqingnian" to "正派青年 (zhengpaiqingnian)",
-        "ruyananshi" to "儒雅男士 (ruyananshi)",
-        "boyinnansheng" to "播音男声 (boyinnansheng)",
-        "shenchennanyin" to "深沉男音 (shenchennanyin)",
-        "shuangkuainansheng" to "爽快男声 (shuangkuainansheng)",
-        "ganliannvsheng" to "干练女声 (ganliannvsheng)",
-        "qinhenvsheng" to "亲切女声 (qinhenvsheng)",
-        "huolinvsheng" to "活力女声 (huolinvsheng)",
-        "jilingshaonv" to "机灵少女 (jilingshaonv)",
-        "yuanqishaonv" to "元气少女 (yuanqishaonv)",
-        "wenrougongzi" to "温柔公子 (wenrougongzi)",
-        "qingniandaxuesheng" to "青年大学生 (qingniandaxuesheng)",
+        "elegantgentle-female" to "Elegant and gentle (elegantgentle-female)",
+        "livelybreezy-female" to "Lively & Breezy (livelybreezy-female)",
+        "energeticconfident-female" to "Energetic Confident (energeticconfident-female)",
+        "jingdiannvsheng" to "Classic female voice (jingdiannvsheng)",
+        "wenroushunv" to "Gentle Mature Woman (wenroushunv)",
+        "tianmeinvsheng" to "Sweet Female Voice (tianmeinvsheng)",
+        "qingchunshaonv" to "Innocent Young Girl (qingchunshaonv)",
+        "wenrounvsheng" to "Gentle female voice (wenrounvsheng)",
+        "ruanmengnvsheng" to "Soft Cute Girl (ruanmengnvsheng)",
+        "youyanvsheng" to "Elegant Female (youyanvsheng)",
+        "lengyanyujie" to "Cold Glamorous Woman (lengyanyujie)",
+        "shuangkuaijiejie" to "Refreshing Sister (shuangkuaijiejie)",
+        "wenjingxuejie" to "Quiet Senior (wenjingxuejie)",
+        "linjiajiejie" to "Girl Next Door (linjiajiejie)",
+        "linjiameimei" to "Girl Next Door (linjiameimei)",
+        "zhixingjiejie" to "Intellectual Sister (zhixingjiejie)",
+        "cixingnansheng" to "Magnetic Male Voice (cixingnansheng)",
+        "wenrounansheng" to "Gentle Male Voice (wenrounansheng)",
+        "yuanqinansheng" to "Energetic Male Voice (yuanqinansheng)",
+        "zhengpaiqingnian" to "Upstanding Youth (zhengpaiqingnian)",
+        "ruyananshi" to "Refined Gentleman (ruyananshi)",
+        "boyinnansheng" to "Announcer Male Voice (boyinnansheng)",
+        "shenchennanyin" to "Deep Male Voice (shenchennanyin)",
+        "shuangkuainansheng" to "Refreshing Male Voice (shuangkuainansheng)",
+        "ganliannvsheng" to "Confident Female Voice (ganliannvsheng)",
+        "qinhenvsheng" to "Friendly Female Voice (qinhenvsheng)",
+        "huolinvsheng" to "Vibrant Female Voice (huolinvsheng)",
+        "jilingshaonv" to "Clever Girl (jilingshaonv)",
+        "yuanqishaonv" to "Energetic Girl (yuanqishaonv)",
+        "wenrougongzi" to "Gentle Young Master (wenrougongzi)",
+        "qingniandaxuesheng" to "Young College Student (qingniandaxuesheng)",
     )
 
     FormItem(
@@ -1113,7 +1189,7 @@ private fun StepTTSConfiguration(
 
     FormItem(
         label = { Text("Response Format") },
-        description = { Text("音频编码格式 (注意 StepFun API 字段名为 camelCase)") }
+        description = { Text("Audio encoding format (note: StepFun API field names are camelCase)") }
     ) {
         SelectTextField(
             value = setting.responseFormat,
@@ -1131,7 +1207,7 @@ private fun StepTTSConfiguration(
     // Speed
     FormItem(
         label = { Text(stringResource(R.string.setting_tts_page_speed)) },
-        description = { Text("语速 (0.5 - 2.0, 1.0 为正常)") }
+        description = { Text("Speech rate (0.5 - 2.0, 1.0 is normal)") }
     ) {
         OutlinedNumberInput(
             value = setting.speed,
@@ -1148,7 +1224,7 @@ private fun StepTTSConfiguration(
     // Volume
     FormItem(
         label = { Text("Volume") },
-        description = { Text("音量 (0.1 - 2.0, 1.0 为正常)") }
+        description = { Text("Volume (0.1 - 2.0, 1.0 is normal)") }
     ) {
         OutlinedNumberInput(
             value = setting.volume,
@@ -1167,7 +1243,7 @@ private fun StepTTSConfiguration(
 
     FormItem(
         label = { Text("Sample Rate") },
-        description = { Text("采样率 (Hz)") }
+        description = { Text("Sampling rate (Hz)") }
     ) {
         SelectTextField(
             value = setting.sampleRate.toString(),
@@ -1184,7 +1260,7 @@ private fun StepTTSConfiguration(
     // Instruction (仅 stepaudio-2.5-tts 生效)
     FormItem(
         label = { Text("Instruction") },
-        description = { Text("全局语境指令, 仅 stepaudio-2.5-tts 生效 (≤200 字符, 留空不下发)") }
+        description = { Text("Global context directive, only applicable to stepaudio-2.5-tts (≤200 characters, leave empty to not be sent)") }
     ) {
         OutlinedTextField(
             value = setting.instruction,
@@ -1195,7 +1271,7 @@ private fun StepTTSConfiguration(
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("例如: 语气温柔, 语速偏慢") },
+            placeholder = { Text("For example: gentle tone, slightly slower speaking rate") },
             minLines = 2,
             maxLines = 4,
         )

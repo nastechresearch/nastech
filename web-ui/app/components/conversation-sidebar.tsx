@@ -9,7 +9,6 @@ import {
   FolderInput,
   FolderPlus,
   Laptop,
-  Languages,
   Moon,
   MoreHorizontal,
   MoveRight,
@@ -131,11 +130,6 @@ const COLOR_THEME_OPTIONS: Array<{
     labelKey: "color_custom",
   },
 ];
-
-const LANGUAGE_OPTIONS = [
-  { value: "zh-CN", label: "简体中文" },
-  { value: "en-US", label: "English" },
-] as const;
 
 type ConversationListItem =
   | { type: "pinned-header" }
@@ -555,51 +549,6 @@ const ConversationListRow = React.memo(
     );
   },
 );
-
-function resolveLanguage(language: string): (typeof LANGUAGE_OPTIONS)[number]["value"] {
-  return language.startsWith("zh") ? "zh-CN" : "en-US";
-}
-
-function LanguageSwitcher() {
-  const { i18n } = useTranslation();
-  const currentLanguage = resolveLanguage(i18n.resolvedLanguage ?? i18n.language);
-  const currentOption =
-    LANGUAGE_OPTIONS.find((option) => option.value === currentLanguage) ?? LANGUAGE_OPTIONS[0];
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="icon-sm"
-          className="text-foreground"
-          type="button"
-          aria-label={`Language: ${currentOption.label}`}
-          title={`Language: ${currentOption.label}`}
-        >
-          <Languages className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-40" side="top" align="end">
-        <DropdownMenuLabel>Language</DropdownMenuLabel>
-        {LANGUAGE_OPTIONS.map((option) => {
-          const selected = option.value === currentLanguage;
-          return (
-            <DropdownMenuItem
-              key={option.value}
-              onClick={() => {
-                void i18n.changeLanguage(option.value);
-              }}
-            >
-              <span className="flex-1">{option.label}</span>
-              <Check className={selected ? "size-4" : "size-4 opacity-0"} />
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 interface FolderBarProps {
   folders: FolderDto[];
@@ -1142,7 +1091,6 @@ export const ConversationSidebar = React.memo(
               </Button>
             )}
 
-            <LanguageSwitcher />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

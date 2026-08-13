@@ -83,10 +83,10 @@ fun LocalDate.toLocalString(includeYear: Boolean): String {
 
 private fun isMonthFirstLocale(locale: Locale): Boolean {
     val monthFirstCountries = setOf(
-        "US", // 美国
-        "PH", // 菲律宾
-        "CA", // 加拿大(虽然魁北克可能使用日-月格式)
-        "CN", // 中国
+        "US", // United States
+        "PH", // Philippines
+        "CA", // Canada (although Quebec may use day-month format)
+        "CN", // China
     )
     return monthFirstCountries.contains(locale.country)
 }

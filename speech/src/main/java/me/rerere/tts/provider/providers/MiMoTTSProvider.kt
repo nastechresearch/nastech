@@ -126,7 +126,7 @@ class MiMoTTSProvider : TTSProvider<TTSProviderSetting.MiMo> {
         2. Inline audio tags — insert [tag] anywhere to fine-tune delivery, e.g. [吸气] [深呼吸] [叹气] [笑] [轻笑] [大笑] [冷笑] [抽泣] [哽咽] [颤抖] [气声] [撒娇] [疲惫] [震惊] .
 
         IMPORTANT constraints (required by this app's text pipeline):
-        - Do NOT put any punctuation (，。！？、：；…) INSIDE a tag's brackets. Separate multiple styles with spaces only, e.g. write (紧张 深呼吸) NOT (紧张，深呼吸).
+        - Do NOT put any punctuation (, . ! ? , : ; ...) INSIDE a tag's brackets. Separate multiple styles with spaces only, e.g. write (tense deep breathing) NOT (tense, deep breathing).
         - Keep inline audio tags standalone like [笑]; do not immediately follow a [tag] with a (…) group.
         - Do not use markdown emphasis (*, _) — it will be stripped.
         - Use tags naturally and sparingly; don't over-annotate.

@@ -132,16 +132,16 @@ internal class McpOAuthCoordinator(
 
     private suspend fun authorize(config: McpServerConfig, context: Context) = withContext(Dispatchers.IO) {
         val serverUrl = config.serverUrl
-        require(serverUrl.isNotBlank()) { "Server URL 为空，无法授权" }
+        require(serverUrl.isNotBlank()) { "Server URL is empty, cannot authorize" }
 
         val protectedResource = oauthClient.discoverProtectedResource(serverUrl)
         val issuer = protectedResource.authorizationServers.firstOrNull()
-            ?: error("受保护资源未声明授权服务器")
+            ?: error("Protected resource did not declare an authorization server")
         val metadata = oauthClient.discoverAuthorizationServer(issuer)
         val authorizationEndpoint = metadata.authorizationEndpoint
-            ?: error("授权服务器缺少 authorization_endpoint")
+            ?: error("The authorization server is missing authorization_endpoint")
         val tokenEndpoint = metadata.tokenEndpoint
-            ?: error("授权服务器缺少 token_endpoint")
+            ?: error("Authorization server is missing token_endpoint")
         val scope = config.commonOptions.oauth?.scope
             ?: protectedResource.scopesSupported?.joinToString(" ")
             ?: metadata.scopesSupported?.joinToString(" ")
@@ -151,7 +151,7 @@ internal class McpOAuthCoordinator(
         var clientSecret = existing?.clientSecret
         if (clientId.isNullOrBlank()) {
             val registrationEndpoint = metadata.registrationEndpoint
-                ?: error("授权服务器不支持动态注册，且未预配置 client_id")
+                ?: error("Authorization server does not support dynamic registration, and no client_id was preconfigured")
             val registration = oauthClient.registerClient(
                 registrationEndpoint = registrationEndpoint,
                 clientName = config.commonOptions.name,
@@ -188,9 +188,9 @@ internal class McpOAuthCoordinator(
             resource = resource,
         )
         val callback = awaitCallbackAndLaunchBrowser(context, authorizationUrl, state)
-            ?: error("OAuth 授权超时")
-        callback.error?.let { error("授权失败: $it") }
-        val code = callback.code ?: error("授权失败: 未返回授权码")
+            ?: error("OAuth authorization timed out")
+        callback.error?.let { error("Authorization failed: $it") }
+        val code = callback.code ?: error("Authorization failed: No authorization code returned")
 
         val token = oauthClient.exchangeCode(
             tokenEndpoint = tokenEndpoint,

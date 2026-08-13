@@ -132,6 +132,7 @@ object CherryStudioProviderImporter {
             is ProviderSetting.Codex -> "codex|${provider.id}"
             is ProviderSetting.Grok -> "grok|${provider.id}"
             is ProviderSetting.GeminiOAuth -> "gemini_oauth|${provider.id}"
+            is ProviderSetting.OpenCode -> "opencode|${provider.serverUrl}|${provider.username}"
         }
     }
 }

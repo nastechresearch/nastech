@@ -95,8 +95,8 @@ data class AssistantRegex(
     val id: Uuid,
     val name: String = "",
     val enabled: Boolean = true,
-    val findRegex: String = "", // 正则表达式
-    val replaceString: String = "", // 替换字符串
+    val findRegex: String = "", // regular expression
+    val replaceString: String = "", // replacement string
     val affectingScope: Set<AssistantAffectScope> = setOf(),
     val visualOnly: Boolean = false, // 是否仅在视觉上影响
 )

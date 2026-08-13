@@ -65,8 +65,8 @@ class DebugVM(
                 // 生成一个包含大量文本的消息（约 100KB 每条）
                 val largeText = buildString {
                     repeat(100) {
-                        append("这是一段很长的测试文本，用于测试 CursorWindow 的大小限制。")
-                        append("Row too big to fit into CursorWindow 错误通常发生在单行数据超过 2MB 时。")
+                        append("This is a long test text used to test the size limit of CursorWindow.")
+                        append("Row too big to fit into CursorWindow The error usually occurs when a single row of data exceeds 2MB.")
                         append("Lorem ipsum dolor sit amet, consectetur adipiscing elit. ")
                         append("Index: $index, Block: $it. ")
                     }
@@ -81,7 +81,7 @@ class DebugVM(
                 val assistantMessage = UIMessage(
                     id = Uuid.random(),
                     role = MessageRole.ASSISTANT,
-                    parts = listOf(UIMessagePart.Text("回复: $largeText")),
+                    parts = listOf(UIMessagePart.Text("Reply: $largeText")),
                     createdAt = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
                 )
 
@@ -95,7 +95,7 @@ class DebugVM(
             val conversation = Conversation(
                 id = Uuid.random(),
                 assistantId = DEFAULT_ASSISTANT_ID,
-                title = "超大对话测试 (${sizeMB}MB)",
+                title = "Extra-large conversation test (${sizeMB}MB)",
                 messageNodes = messageNodes,
             )
 
@@ -121,7 +121,7 @@ class DebugVM(
             val conversation = Conversation(
                 id = Uuid.random(),
                 assistantId = DEFAULT_ASSISTANT_ID,
-                title = "${messageCount}条消息测试",
+                title = "${messageCount} messages test",
                 messageNodes = messageNodes,
             )
 
@@ -131,11 +131,11 @@ class DebugVM(
 
     private fun randomMessageText(index: Int, role: MessageRole): String {
         val fragments = listOf(
-            "快速", "随机", "消息", "样例", "用于", "测试", "列表", "渲染", "滚动", "性能",
-            "聊天", "对话", "内容", "结构", "验证", "分页", "顺序", "稳定", "系统",
+            "Quick", "Random", "Message", "Sample", "For", "Testing", "List", "Rendering", "Scrolling", "Performance",
+            "chat", "conversation", "content", "structure", "validation", "pagination", "order", "stability", "system",
         )
         val wordCount = Random.nextInt(6, 14)
-        val prefix = if (role == MessageRole.USER) "用户" else "助手"
+        val prefix = if (role == MessageRole.USER) "User" else "Assistant"
         val body = List(wordCount) { fragments.random() }.joinToString(" ")
         return "$prefix#${index + 1}: $body"
     }

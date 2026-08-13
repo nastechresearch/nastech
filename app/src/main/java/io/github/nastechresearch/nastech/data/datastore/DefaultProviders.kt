@@ -145,16 +145,16 @@ val DEFAULT_PROVIDERS = listOf(
         description = {
             Text(
                 text = buildAnnotatedString {
-                    append("提供 OpenAI、Claude、Google Gemini 等主流模型的高并发和稳定服务")
+                    append("Provide high-concurrency and stable services for mainstream models such as OpenAI, Claude, Google Gemini")
                     appendLine()
-                    append("官网：")
+                    append("Official website:")
                     withLink(LinkAnnotation.Url("https://aihubmix.com?aff=pG7r")) {
                         withStyle(SpanStyle(MaterialTheme.colorScheme.primary)) {
                             append("https://aihubmix.com")
                         }
                     }
                     appendLine()
-                    append("充值: ")
+                    append("Top-up: ")
                     withLink(LinkAnnotation.Url("https://console.aihubmix.com/topup")) {
                         withStyle(SpanStyle(MaterialTheme.colorScheme.primary)) {
                             append("https://console.aihubmix.com/topup")
@@ -165,13 +165,13 @@ val DEFAULT_PROVIDERS = listOf(
         },
         shortDescription = {
             Text(
-                text = "支持gpt, claude, gemini等200+模型"
+                text = "Supports gpt, claude, gemini and 200+ other models"
             )
         },
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("56a94d29-c88b-41c5-8e09-38a7612d6cf8"),
-        name = "硅基流动",
+        name = "SiliconFlow",
         baseUrl = "https://api.siliconflow.cn/v1",
         apiKey = "",
         enabled = false,
@@ -205,7 +205,7 @@ val DEFAULT_PROVIDERS = listOf(
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("d6c4d8c6-3f62-4ca9-a6f3-7ade6b15ecc3"),
-        name = "月之暗面",
+        name = "Moonshot AI",
         baseUrl = "https://api.moonshot.cn/v1",
         apiKey = "",
         enabled = true,
@@ -244,7 +244,7 @@ val DEFAULT_PROVIDERS = listOf(
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("da020a90-f7b3-4c29-b90e-c511a0630630"),
-        name = "小马算力",
+        name = "TokenPony",
         baseUrl = "https://api.tokenpony.cn/v1",
         apiKey = "",
         enabled = false,
@@ -252,15 +252,15 @@ val DEFAULT_PROVIDERS = listOf(
         description = {
             MarkdownBlock(
                 content = """
-                    小马算力是一家提供国产模型的API网关服务，使用统一接口接入多种模型
-                    官网: [tokenpony.cn](https://www.tokenpony.cn/79clb)
+                    TokenPony is an API gateway for Chinese AI models, providing unified access to multiple models.
+                    Official website: [tokenpony.cn](https://www.tokenpony.cn/79clb)
                 """.trimIndent()
             )
         }
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("f76cae46-069a-4334-ab8e-224e4979e58c"),
-        name = "阿里云百炼",
+        name = "Alibaba Cloud Bailian",
         baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1",
         apiKey = "",
         enabled = false,
@@ -268,7 +268,7 @@ val DEFAULT_PROVIDERS = listOf(
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("3dfd6f9b-f9d9-417f-80c1-ff8d77184191"),
-        name = "火山引擎",
+        name = "Volcano Engine",
         baseUrl = "https://ark.cn-beijing.volces.com/api/v3",
         apiKey = "",
         enabled = false,
@@ -276,7 +276,7 @@ val DEFAULT_PROVIDERS = listOf(
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("3bc40dc1-b11a-46fa-863b-6306971223be"),
-        name = "智谱AI开放平台",
+        name = "Zhipu AI Open Platform",
         baseUrl = "https://open.bigmodel.cn/api/paas/v4",
         apiKey = "",
         enabled = false,
@@ -284,7 +284,7 @@ val DEFAULT_PROVIDERS = listOf(
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("f4f8870e-82d3-495b-9b64-d58e508b3b2c"),
-        name = "阶跃星辰",
+        name = "StepFun",
         baseUrl = "https://api.stepfun.com/v1",
         apiKey = "",
         enabled = false,
@@ -300,7 +300,7 @@ val DEFAULT_PROVIDERS = listOf(
         description = {
             Text(
                 text = buildAnnotatedString {
-                    append("企业级AI服务, 官网：")
+                    append("Enterprise-level AI service, official website:")
                     withLink(LinkAnnotation.Url("https://302.ai/")) {
                         withStyle(SpanStyle(MaterialTheme.colorScheme.primary)) {
                             append("https://302.ai/")
@@ -312,7 +312,7 @@ val DEFAULT_PROVIDERS = listOf(
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("ef5d149b-8e34-404b-818c-6ec242e5c3c5"),
-        name = "腾讯Hunyuan",
+        name = "Tencent Hunyuan",
         baseUrl = "https://api.hunyuan.cloud.tencent.com/v1",
         apiKey = "",
         enabled = false,
@@ -329,7 +329,7 @@ val DEFAULT_PROVIDERS = listOf(
     ),
     ProviderSetting.OpenAI(
         id = Uuid.parse("aecf04fd-cb5c-4582-aed2-e8bf393923fd"),
-        name = "随想AI网关",
+        name = "Suixiang AI Gateway",
         baseUrl = "https://sui-xiang.com/v1",
         apiKey = "",
         enabled = false,
@@ -337,8 +337,8 @@ val DEFAULT_PROVIDERS = listOf(
         description = {
             Text(
                 text = buildAnnotatedString {
-                    append("可靠高效的 API 中继服务，提供 Claude、Codex、Gemini 等中继服务。注重隐私·无数据倒卖·无模型掺水，充值额度 1:1，按量付费。多线路冗余、跨区域容灾、自动故障切换，长链路 SSE 不中断。\n")
-                    append("官网：")
+                    append("Reliable and efficient API relay service, offering relay services for Claude, Codex, Gemini, etc. Privacy-focused·no data resale·no model tampering, top-ups at 1:1, pay-as-you-go. Multi-line redundancy, cross-region disaster recovery, automatic failover, long-link SSE without interruption.\n")
+                    append("Official website:")
                     withLink(LinkAnnotation.Url("https://sui-xiang.com")) {
                         withStyle(SpanStyle(MaterialTheme.colorScheme.primary)) {
                             append("https://sui-xiang.com")
@@ -349,7 +349,7 @@ val DEFAULT_PROVIDERS = listOf(
         },
         shortDescription = {
             Text(
-                text = "Claude、Codex、Gemini 等中继服务，1:1 充值"
+                text = "Claude, Codex, Gemini and other relay services, 1:1 top-up"
             )
         },
     ),
@@ -380,8 +380,8 @@ val DEFAULT_PROVIDERS = listOf(
             Text(
                 text = buildAnnotatedString {
                     append(
-                        "所有AI大模型全都可以用！无需翻墙！价格是官方5折！\n" +
-                            "官网："
+                        "All major AI models are available! No need to use a VPN! Prices are 50% of the official price!\n" +
+                            "Official website:"
                     )
                     withLink(LinkAnnotation.Url("https://ackai.fun/register?aff=jxpP")) {
                         withStyle(SpanStyle(MaterialTheme.colorScheme.primary)) {
@@ -402,7 +402,7 @@ val DEFAULT_PROVIDERS = listOf(
         description = {
             Text(
                 text = buildAnnotatedString {
-                    append("一站式LLM API中转平台货源站\n官网：")
+                    append("One-stop LLM API relay platform source site\nOfficial website:")
                     withLink(LinkAnnotation.Url("https://www.unifyllm.com/")) {
                         withStyle(SpanStyle(MaterialTheme.colorScheme.primary)) {
                             append("https://www.unifyllm.com/")

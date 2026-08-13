@@ -35,6 +35,7 @@ import io.github.nastechresearch.nastech.data.gemini.GeminiCredentialStore
 import io.github.nastechresearch.nastech.data.gemini.GeminiOAuthManager
 import io.github.nastechresearch.nastech.data.gemini.GeminiProvider
 import io.github.nastechresearch.nastech.data.grok.GrokProvider
+import io.github.nastechresearch.nastech.data.opencode.OpenCodeProvider
 import io.github.nastechresearch.nastech.data.datastore.SettingsStore
 import io.github.nastechresearch.nastech.data.db.AppDatabase
 import io.github.nastechresearch.nastech.data.db.fts.MessageFtsManager
@@ -390,6 +391,13 @@ val dataSourceModule = module {
                     repository = get<GeminiAccountRepository>(),
                     json = json,
                 )
+            )
+            pm.registerProvider(
+                "opencode",
+                OpenCodeProvider(
+                    client = get(),
+                    json = json,
+                ),
             )
         }
     }

@@ -137,6 +137,7 @@ fun ProviderConfigure(
             is ProviderSetting.Codex -> Unit
             is ProviderSetting.Grok -> Unit
             is ProviderSetting.GeminiOAuth -> Unit
+            is ProviderSetting.OpenCode -> ProviderConfigureOpenCode(provider, onEdit)
         }
     }
 }
@@ -154,6 +155,7 @@ fun ProviderSetting.convertTo(type: KClass<out ProviderSetting>): ProviderSettin
         is ProviderSetting.Codex -> "" // OAuth, no API key
         is ProviderSetting.Grok -> "" // OAuth, no API key
         is ProviderSetting.GeminiOAuth -> "" // OAuth, no API key
+        is ProviderSetting.OpenCode -> this.password
     }
     val sourceBaseUrl = when (this) {
         is ProviderSetting.OpenAI -> this.baseUrl
@@ -165,12 +167,14 @@ fun ProviderSetting.convertTo(type: KClass<out ProviderSetting>): ProviderSettin
         is ProviderSetting.Codex -> "" // OAuth, no base URL
         is ProviderSetting.Grok -> "" // OAuth, no base URL
         is ProviderSetting.GeminiOAuth -> "" // OAuth, no base URL
+        is ProviderSetting.OpenCode -> this.serverUrl
     }
     val targetDefaultBaseUrl = when (type) {
         ProviderSetting.OpenAI::class -> ProviderSetting.OpenAI().baseUrl
         ProviderSetting.Google::class -> ProviderSetting.Google().baseUrl
         ProviderSetting.Claude::class -> ProviderSetting.Claude().baseUrl
         ProviderSetting.AICore::class -> ""
+        ProviderSetting.OpenCode::class -> ProviderSetting.OpenCode().serverUrl
         else -> error("Unsupported provider type: $type")
     }
     val convertedBaseUrl = sourceBaseUrl.convertToTargetBaseUrl(targetDefaultBaseUrl)
@@ -206,6 +210,19 @@ fun ProviderSetting.convertTo(type: KClass<out ProviderSetting>): ProviderSettin
             shortDescription = this.shortDescription,
         )
 
+        ProviderSetting.OpenCode::class -> ProviderSetting.OpenCode(
+            id = this.id,
+            enabled = this.enabled,
+            name = this.name,
+            models = this.models,
+            balanceOption = this.balanceOption,
+            builtIn = this.builtIn,
+            description = this.description,
+            shortDescription = this.shortDescription,
+            serverUrl = convertedBaseUrl,
+            password = apiKey,
+        )
+
         else -> error("Unsupported provider type: $type")
     }
 }
@@ -223,6 +240,7 @@ internal fun ProviderSetting.defaultBaseUrlForReset(): String {
             is ProviderSetting.Codex -> return "" // OAuth, no base URL
             is ProviderSetting.Grok -> return "" // OAuth, no base URL
             is ProviderSetting.GeminiOAuth -> return "" // OAuth, no base URL
+            is ProviderSetting.OpenCode -> if (defaultProvider is ProviderSetting.OpenCode) return defaultProvider.serverUrl
         }
     }
     return when (this) {
@@ -235,6 +253,7 @@ internal fun ProviderSetting.defaultBaseUrlForReset(): String {
         is ProviderSetting.Codex -> ""
         is ProviderSetting.Grok -> ""
         is ProviderSetting.GeminiOAuth -> ""
+        is ProviderSetting.OpenCode -> ProviderSetting.OpenCode().serverUrl
     }
 }
 
@@ -250,6 +269,7 @@ internal fun ProviderSetting.resetBaseUrlToDefault(): ProviderSetting {
         is ProviderSetting.Codex -> this // no base URL to reset
         is ProviderSetting.Grok -> this // no base URL to reset
         is ProviderSetting.GeminiOAuth -> this // no base URL to reset
+        is ProviderSetting.OpenCode -> this.copy(serverUrl = defaultBaseUrl)
     }
 }
 
@@ -264,6 +284,7 @@ internal fun ProviderSetting.isUsingDefaultBaseUrl(): Boolean {
         is ProviderSetting.Codex -> return true // no base URL concept
         is ProviderSetting.Grok -> return true // no base URL concept
         is ProviderSetting.GeminiOAuth -> return true // no base URL concept
+        is ProviderSetting.OpenCode -> this.serverUrl
     }
     return baseUrl == defaultBaseUrlForReset()
 }
@@ -420,6 +441,76 @@ private fun ProviderConfigureOpenAI(
         Switch(
             checked = provider.includeHistoryReasoning,
             onCheckedChange = { onEdit(provider.copy(includeHistoryReasoning = it)) }
+        )
+    }
+}
+
+@Composable
+private fun ProviderConfigureOpenCode(
+    provider: ProviderSetting.OpenCode,
+    onEdit: (provider: ProviderSetting.OpenCode) -> Unit,
+) {
+    OutlinedTextField(
+        value = provider.name,
+        onValueChange = { onEdit(provider.copy(name = it.trim())) },
+        label = { Text(stringResource(R.string.setting_provider_page_name)) },
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    OutlinedTextField(
+        value = provider.serverUrl,
+        onValueChange = { onEdit(provider.copy(serverUrl = it.trim())) },
+        label = { Text("OpenCode server URL") },
+        placeholder = { Text("http://host:4096") },
+        supportingText = { Text("A server you operate with `opencode serve`; Nastech sends prompts to this host.") },
+        modifier = Modifier.fillMaxWidth(),
+        isError = provider.serverUrl.isNotBlank() && !provider.serverUrl.isValidBaseUrl(),
+    )
+
+    OutlinedTextField(
+        value = provider.username,
+        onValueChange = { onEdit(provider.copy(username = it.trim())) },
+        label = { Text("Basic-auth username (optional)") },
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    var passwordVisible by remember { mutableStateOf(false) }
+    OutlinedTextField(
+        value = provider.password,
+        onValueChange = { onEdit(provider.copy(password = it)) },
+        label = { Text("Basic-auth password (optional)") },
+        modifier = Modifier.fillMaxWidth(),
+        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                Icon(
+                    if (passwordVisible) HugeIcons.ViewOff else HugeIcons.View,
+                    contentDescription = stringResource(
+                        if (passwordVisible) R.string.accessibility_hide_password
+                        else R.string.accessibility_show_password,
+                    ),
+                )
+            }
+        },
+    )
+
+    OutlinedTextField(
+        value = provider.sessionId,
+        onValueChange = { onEdit(provider.copy(sessionId = it.trim())) },
+        label = { Text("OpenCode session ID (optional)") },
+        supportingText = { Text("Leave empty to create a fresh server session for each Nastech request.") },
+        modifier = Modifier.fillMaxWidth(),
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(stringResource(R.string.setting_provider_page_enable))
+        Switch(
+            checked = provider.enabled,
+            onCheckedChange = { onEdit(provider.copy(enabled = it)) },
         )
     }
 }

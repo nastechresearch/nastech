@@ -23,7 +23,7 @@ interface KeyRoulette {
     }
 }
 
-private val SPLIT_KEY_REGEX = "[\\s,]+".toRegex() // 空格换行和逗号
+private val SPLIT_KEY_REGEX = "[\\s,]+".toRegex() // spaces, newlines and commas
 
 private fun splitKey(key: String): List<String> {
     return key

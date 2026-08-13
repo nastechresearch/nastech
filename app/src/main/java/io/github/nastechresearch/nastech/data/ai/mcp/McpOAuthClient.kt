@@ -115,7 +115,7 @@ class McpOAuthClient(
                     return@withContext meta
                 }
             }
-            error("无法发现受保护资源元数据 (protected resource metadata)")
+            error("Unable to discover protected resource metadata (protected resource metadata)")
         }
 
     /**
@@ -131,7 +131,7 @@ class McpOAuthClient(
                     return@withContext meta
                 }
             }
-            error("无法发现授权服务器元数据 (authorization server metadata): $issuer")
+            error("Could not discover authorization server metadata (authorization server metadata): $issuer")
         }
 
     /** 动态客户端注册 (RFC 7591)，返回 client_id (公共客户端通常无 secret)。 */
@@ -185,7 +185,7 @@ class McpOAuthClient(
         resource: String,
     ): String {
         val base = authorizationEndpoint.toHttpUrlOrNull()
-            ?: error("非法的授权端点: $authorizationEndpoint")
+            ?: error("Invalid authorization endpoint: $authorizationEndpoint")
         return base.newBuilder()
             .addQueryParameter("response_type", "code")
             .addQueryParameter("client_id", clientId)
