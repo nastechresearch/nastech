@@ -1,6 +1,7 @@
 package io.github.nastechresearch.nastech.ui.pages.setting
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,8 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.Surface
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -163,9 +166,11 @@ private fun GlobalGlassControls(profile: GlassAppearance, onUpdate: (GlassAppear
             SettingSwitch("Pure Black Glass", profile.pureBlack) { onUpdate(profile.copy(pureBlack = it)) }
             SettingSwitch("Blur where available", profile.blurEnabled) { onUpdate(profile.copy(blurEnabled = it)) }
             SettingSwitch("Animated background light", profile.motionEnabled) { onUpdate(profile.copy(motionEnabled = it)) }
-            HexTintEditor(
-                label = "Global tint",
+            VisualColorPicker(
+                label = "Glass tint",
                 value = profile.tintArgb,
+                supportingText = "Choose a visible material color. The selected swatch updates cards, chat, and navigation immediately.",
+                presets = GlassTintPresets,
                 onValueChange = { onUpdate(profile.copy(tintArgb = it)) },
             )
             GlassSlider("Transparency", profile.transparency) { onUpdate(profile.copy(transparency = it)) }
@@ -206,13 +211,6 @@ private fun GlobalGlassControls(profile: GlassAppearance, onUpdate: (GlassAppear
                 onReset = { onUpdate(profile.copy(accentArgb = null)) },
             )
             TextScaleSlider(profile.textScale) { onUpdate(profile.copy(textScale = it)) }
-            HorizontalDivider()
-            Text("Quick presets", style = MaterialTheme.typography.titleSmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                Button(onClick = { onUpdate(GlassAppearance(pureBlack = true, tintArgb = 0xFF000000L, transparency = 0.74f, blurEnabled = true, blurIntensity = 0.62f)) }, modifier = Modifier.weight(1f)) { Text("Black") }
-                Button(onClick = { onUpdate(GlassAppearance(tintArgb = 0xFFE8F4FFL, transparency = 0.48f, blurEnabled = true, blurIntensity = 0.72f)) }, modifier = Modifier.weight(1f)) { Text("Frost") }
-                Button(onClick = { onUpdate(GlassAppearance(tintArgb = 0xFF142C58L, transparency = 0.70f, blurEnabled = true, blurIntensity = 0.60f)) }, modifier = Modifier.weight(1f)) { Text("Midnight") }
-            }
         }
     }
 }
@@ -240,9 +238,11 @@ private fun GlassSurfaceEditor(surface: GlassSurface, profile: GlassAppearance, 
                 updateOverride(override.copy(inheritGlobal = it))
             }
             if (!override.inheritGlobal) {
-                HexTintEditor(
-                    label = "Custom tint",
+                VisualColorPicker(
+                    label = "${surface.displayName()} tint",
                     value = effectiveTint,
+                    supportingText = "Choose a color for this surface only.",
+                    presets = GlassTintPresets,
                     onValueChange = { updateOverride(override.copy(tintArgb = it)) },
                 )
                 GlassSlider("Transparency", effectiveTransparency) {
@@ -296,9 +296,11 @@ private fun OptionalHexColorEditor(
     onReset: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        HexTintEditor(
+        VisualColorPicker(
             label = label,
             value = value ?: fallback,
+            supportingText = supportingText,
+            presets = ForegroundColorPresets,
             onValueChange = onValueChange,
         )
         Row(
@@ -306,11 +308,6 @@ private fun OptionalHexColorEditor(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = supportingText,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             if (value != null) {
                 OutlinedButton(onClick = onReset) { Text("Use theme") }
             }
@@ -339,28 +336,113 @@ private fun TextScaleSlider(value: Float, onValueChange: (Float) -> Unit) {
 }
 
 @Composable
-private fun HexTintEditor(label: String, value: Long, onValueChange: (Long) -> Unit) {
-    var text by remember(value) { mutableStateOf(value.toHexColor()) }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(MaterialTheme.shapes.small)
-                .background(Color(value)),
-        )
-        OutlinedTextField(
-            value = text,
-            onValueChange = {
-                text = it
-                it.parseHexColor()?.let(onValueChange)
-            },
-            label = { Text(label) },
-            placeholder = { Text("#233044") },
-            supportingText = { Text("Any #RRGGBB glass tint") },
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-        )
+private fun VisualColorPicker(
+    label: String,
+    value: Long,
+    supportingText: String,
+    presets: List<AppearanceColorPreset>,
+    onValueChange: (Long) -> Unit,
+) {
+    var showCustomField by remember(label) { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(Color(value)),
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(label, style = MaterialTheme.typography.bodyMedium)
+                Text(supportingText, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            items(presets, key = { it.name }) { preset ->
+                val selected = (value and 0xFFFFFFL) == (preset.argb and 0xFFFFFFL)
+                Column(
+                    modifier = Modifier
+                        .clickable { onValueChange(preset.argb) }
+                        .padding(vertical = 2.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Surface(
+                        modifier = Modifier.size(42.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        color = Color(preset.argb),
+                        border = androidx.compose.foundation.BorderStroke(
+                            if (selected) 3.dp else 1.dp,
+                            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                        ),
+                    ) {
+                        if (selected) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("✓", color = readableOn(Color(preset.argb)), style = MaterialTheme.typography.titleMedium)
+                            }
+                        }
+                    }
+                    Text(
+                        preset.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        OutlinedButton(onClick = { showCustomField = !showCustomField }) {
+            Text(if (showCustomField) "Hide custom color" else "Use a custom color")
+        }
+        if (showCustomField) {
+            CustomHexColorField(value = value, onValueChange = onValueChange)
+        }
     }
+}
+
+@Composable
+private fun CustomHexColorField(value: Long, onValueChange: (Long) -> Unit) {
+    var text by remember(value) { mutableStateOf(value.toHexColor()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            it.parseHexColor()?.let(onValueChange)
+        },
+        label = { Text("Custom color") },
+        placeholder = { Text("#233044") },
+        supportingText = { Text("Enter any #RRGGBB color") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+    )
+}
+
+private data class AppearanceColorPreset(val name: String, val argb: Long)
+
+private val GlassTintPresets = listOf(
+    AppearanceColorPreset("Onyx", 0xFF050505L),
+    AppearanceColorPreset("Midnight", 0xFF142C58L),
+    AppearanceColorPreset("Ocean", 0xFF0C4A6EL),
+    AppearanceColorPreset("Forest", 0xFF14532DL),
+    AppearanceColorPreset("Plum", 0xFF4C1D5EL),
+    AppearanceColorPreset("Frost", 0xFFE8F4FFL),
+)
+
+private val ForegroundColorPresets = listOf(
+    AppearanceColorPreset("Paper", 0xFFF7F8FCL),
+    AppearanceColorPreset("Soft", 0xFFC7D2F0L),
+    AppearanceColorPreset("Sky", 0xFFBFE1FFL),
+    AppearanceColorPreset("Mint", 0xFFA7F3D0L),
+    AppearanceColorPreset("Gold", 0xFFFDE68AL),
+    AppearanceColorPreset("Rose", 0xFFFFC2D1L),
+)
+
+private fun readableOn(color: Color): Color {
+    val luminance = (0.299f * color.red) + (0.587f * color.green) + (0.114f * color.blue)
+    return if (luminance > 0.55f) Color(0xFF10131AL) else Color.White
 }
 
 private fun Long.toHexColor(): String = "#%06X".format(this and 0xFFFFFF)

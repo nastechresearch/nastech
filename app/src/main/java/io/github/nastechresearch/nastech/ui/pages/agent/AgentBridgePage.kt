@@ -31,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,6 +40,7 @@ import io.github.nastechresearch.nastech.ui.components.nav.BackButton
 import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
 import io.github.nastechresearch.nastech.ui.theme.glassSurface
+import io.github.nastechresearch.nastech.utils.navigateToChatPage
 import io.github.nastechresearch.nastech.utils.plus
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
@@ -53,17 +53,14 @@ import me.rerere.hugeicons.stroke.Shield01
 import me.rerere.hugeicons.stroke.Sparkles
 
 /**
- * Android-side control centre for the optional Nastech Agent companion.
- *
- * The bridge is deliberately opt-in. This screen explains the boundary and gives users direct
- * routes to the existing provider, skills, workspace, and approval surfaces before a host is
- * connected in a later protocol phase.
+ * One connected Nastech Agent control centre. Actions here either open an existing Nastech
+ * capability or create a regular Nastech conversation with a focused, editable starting prompt.
  */
 @Composable
 fun AgentBridgePage() {
     val navigator = LocalNavController.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    var showSetupSheet by remember { mutableStateOf(false) }
+    var showActionsSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -71,8 +68,8 @@ fun AgentBridgePage() {
                 title = { Text("Nastech Agent") },
                 navigationIcon = { BackButton() },
                 actions = {
-                    IconButton(onClick = { showSetupSheet = true }) {
-                        Icon(HugeIcons.Add01, contentDescription = "Connect an agent")
+                    IconButton(onClick = { showActionsSheet = true }) {
+                        Icon(HugeIcons.Add01, contentDescription = "Start an agent task")
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -89,12 +86,12 @@ fun AgentBridgePage() {
         ) {
             item {
                 AgentHero(
-                    onConnect = { showSetupSheet = true },
+                    onStartTask = { navigateToChatPage(navigator, initText = "Help me plan and complete this task: ") },
                     onOpenSkills = { navigator.navigate(Screen.Skills) },
                 )
             }
             item {
-                AgentStatusCard(onConnect = { showSetupSheet = true })
+                AgentStatusCard(onStartTask = { navigateToChatPage(navigator) })
             }
             item {
                 Text("What stays in your control", style = MaterialTheme.typography.titleMedium)
@@ -126,9 +123,17 @@ fun AgentBridgePage() {
             item {
                 AgentControlCard(
                     title = "Provider and model routing",
-                    body = "Configure the model connection used by Nastech. A future Agent Bridge can use the same user-approved provider choices.",
+                    body = "Choose the model connection used by the conversations, skills, and tools already in Nastech.",
                     icon = HugeIcons.Settings03,
                     onClick = { navigator.navigate(Screen.SettingProvider) },
+                )
+            }
+            item {
+                AgentControlCard(
+                    title = "Sub-agents",
+                    body = "Create focused assistant roles for larger tasks from the same Nastech conversation workflow.",
+                    icon = HugeIcons.Sparkles,
+                    onClick = { navigator.navigate(Screen.SettingSubAgents) },
                 )
             }
             item {
@@ -145,19 +150,31 @@ fun AgentBridgePage() {
         }
     }
 
-    if (showSetupSheet) {
-        AgentBridgeSetupSheet(
-            onDismiss = { showSetupSheet = false },
-            onOpenProviders = {
-                showSetupSheet = false
-                navigator.navigate(Screen.SettingProvider)
+    if (showActionsSheet) {
+        AgentActionsSheet(
+            onDismiss = { showActionsSheet = false },
+            onStartPlanning = {
+                showActionsSheet = false
+                navigateToChatPage(navigator, initText = "Help me plan this goal step by step: ")
+            },
+            onStartResearch = {
+                showActionsSheet = false
+                navigateToChatPage(navigator, initText = "Research this topic and prepare a structured brief: ")
+            },
+            onOpenSkills = {
+                showActionsSheet = false
+                navigator.navigate(Screen.Skills)
+            },
+            onOpenWorkspaces = {
+                showActionsSheet = false
+                navigator.navigate(Screen.Workspaces)
             },
         )
     }
 }
 
 @Composable
-private fun AgentHero(onConnect: () -> Unit, onOpenSkills: () -> Unit) {
+private fun AgentHero(onStartTask: () -> Unit, onOpenSkills: () -> Unit) {
     val glass = glassSurface(GlassSurface.CARD, MaterialTheme.colorScheme.surfaceContainer)
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -177,14 +194,14 @@ private fun AgentHero(onConnect: () -> Unit, onOpenSkills: () -> Unit) {
                     Icon(HugeIcons.Sparkles, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
-            Text("A supervised bridge to your growing agent", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Text("One workspace for every agent task", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Text(
-                "Nastech Agent can provide optional sessions, skills, memory, and streamed task activity from a companion host. The Android app keeps setup, context, and approvals visible.",
+                "Start an ordinary Nastech conversation, then add the skills, workspace context, model, voice, and approvals that belong to the task. Everything stays in the same app flow.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FilledTonalButton(onClick = onConnect) { Text("Set up bridge") }
+                FilledTonalButton(onClick = onStartTask) { Text("Start a task") }
                 OutlinedButton(onClick = onOpenSkills) { Text("Open skills") }
             }
         }
@@ -192,7 +209,7 @@ private fun AgentHero(onConnect: () -> Unit, onOpenSkills: () -> Unit) {
 }
 
 @Composable
-private fun AgentStatusCard(onConnect: () -> Unit) {
+private fun AgentStatusCard(onStartTask: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CustomColors.cardColors,
@@ -212,14 +229,14 @@ private fun AgentStatusCard(onConnect: () -> Unit) {
                 }
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text("No Agent Bridge connected", style = MaterialTheme.typography.titleMedium)
+                Text("Agent actions stay in your chats", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "Your current chats and local features continue to work normally.",
+                    "Use a focused starter, then continue with the same chat history, skills, files, provider, and approval controls.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            OutlinedButton(onClick = onConnect) { Text("Connect") }
+            OutlinedButton(onClick = onStartTask) { Text("Start") }
         }
     }
 }
@@ -251,7 +268,13 @@ private fun AgentControlCard(
 }
 
 @Composable
-private fun AgentBridgeSetupSheet(onDismiss: () -> Unit, onOpenProviders: () -> Unit) {
+private fun AgentActionsSheet(
+    onDismiss: () -> Unit,
+    onStartPlanning: () -> Unit,
+    onStartResearch: () -> Unit,
+    onOpenSkills: () -> Unit,
+    onOpenWorkspaces: () -> Unit,
+) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
@@ -259,38 +282,38 @@ private fun AgentBridgeSetupSheet(onDismiss: () -> Unit, onOpenProviders: () -> 
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("Connect Nastech Agent", style = MaterialTheme.typography.titleLarge)
+            Text("Start an agent task", style = MaterialTheme.typography.titleLarge)
             Text(
-                "A bridge is optional. It lets this app communicate with an agent you run on a trusted device or service. Nastech will show the endpoint, connection status, shared context, and approvals before work begins.",
+                "Choose a focused starting point. Each option opens the same Nastech conversation experience, where you can change the prompt, model, skills, voice, and tool permissions before anything acts.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            SetupStep("1", "Prepare a trusted Agent host", "Run Nastech Agent on a device or service you control and enable its authenticated API server.")
-            SetupStep("2", "Configure a provider", "Use Nastech’s existing provider settings to select your approved model connection.")
-            SetupStep("3", "Add a bridge profile", "A forthcoming connection form will ask for the exact URL, profile, and authorization token. It will never take those details from ordinary chat messages.")
-            SetupStep("4", "Review before allowing work", "Choose the skills, tools, workspace context, and approval rules for each bridge profile.")
-            FilledTonalButton(onClick = onOpenProviders, modifier = Modifier.fillMaxWidth()) {
-                Text("Open provider settings")
-            }
+            AgentSheetAction("Plan a project", "Open a chat with a project-planning starter", HugeIcons.Sparkles, onStartPlanning)
+            AgentSheetAction("Research a topic", "Open a chat with a research-brief starter", HugeIcons.Message01, onStartResearch)
+            AgentSheetAction("Choose skills", "Manage reusable capabilities for your assistants", HugeIcons.Puzzle, onOpenSkills)
+            AgentSheetAction("Attach workspace context", "Open local workspaces and project files", HugeIcons.Folder01, onOpenWorkspaces)
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-private fun SetupStep(number: String, title: String, body: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-        Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)) {
-            Text(
-                text = number,
-                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun AgentSheetAction(label: String, description: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CustomColors.cardColors,
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(label, style = MaterialTheme.typography.titleMedium)
+                Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
