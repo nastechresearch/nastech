@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -282,6 +283,7 @@ class RouteActivity : ComponentActivity() {
         val screenReader = rememberScreenReaderState(tts)
         val activeReaderRequest by screenReader.activeRequest.collectAsStateWithLifecycle()
         val readerHazeState = rememberHazeState()
+        val readerFocusHazeStyle = HazeMaterials.thin(containerColor = Color.Black.copy(alpha = 0.78f))
         val asr = rememberCustomAsrState()
         val eventBus = koinInject<AppEventBus>()
         LaunchedEffect(tts) {
@@ -724,7 +726,7 @@ class RouteActivity : ComponentActivity() {
                         modifier = if (activeReaderRequest?.focus == true) {
                             Modifier.hazeEffect(state = readerHazeState) {
                                 blurEffect {
-                                    style = HazeMaterials.thin(containerColor = Color.Black.copy(alpha = 0.78f))
+                                    style = readerFocusHazeStyle
                                 }
                             }
                         } else {
