@@ -76,6 +76,21 @@ fun NastechTheme(
         }
     }
     val extendColors = if (darkTheme) ExtendDarkColors else ExtendLightColors
+    val appearanceColorScheme = remember(colorSchemeConverted, settings.glassAppearance) {
+        val appearance = settings.glassAppearance
+        val primaryText = appearance.primaryTextArgb?.let(::Color)
+        val secondaryText = appearance.secondaryTextArgb?.let(::Color)
+        val accent = appearance.accentArgb?.let(::Color)
+        colorSchemeConverted.copy(
+            primary = accent ?: colorSchemeConverted.primary,
+            secondary = accent ?: colorSchemeConverted.secondary,
+            tertiary = accent ?: colorSchemeConverted.tertiary,
+            onBackground = primaryText ?: colorSchemeConverted.onBackground,
+            onSurface = primaryText ?: colorSchemeConverted.onSurface,
+            onSurfaceVariant = secondaryText ?: colorSchemeConverted.onSurfaceVariant,
+            outline = secondaryText?.copy(alpha = 0.72f) ?: colorSchemeConverted.outline,
+        )
+    }
 
     // 更新状态栏图标颜色
     val view = LocalView.current
@@ -96,8 +111,8 @@ fun NastechTheme(
         LocalOverscrollFactory provides null
     ) {
         MaterialExpressiveTheme(
-            colorScheme = colorSchemeConverted,
-            typography = Typography,
+            colorScheme = appearanceColorScheme,
+            typography = nastechTypography(settings.glassAppearance.textScale),
             content = content,
             motionScheme = MotionScheme.expressive()
         )

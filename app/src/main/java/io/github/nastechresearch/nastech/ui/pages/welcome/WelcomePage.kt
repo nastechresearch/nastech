@@ -95,7 +95,7 @@ fun WelcomePage(chatId: String, vm: SettingVM = koinViewModel()) {
                                     vm.updateSettings(
                                         settings.copy(onboardingAcceptedVersion = BuildConfig.VERSION_NAME),
                                     )
-                                    navigator.clearAndNavigate(Screen.Chat(chatId))
+                                    navigator.clearAndNavigate(Screen.Home)
                                 }
                             },
                             enabled = page < 2 || acceptedTerms,

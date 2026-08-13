@@ -146,6 +146,10 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
     ) { innerPadding ->
         when (selectedPage) {
             0 -> Column(modifier = Modifier.padding(innerPadding)) {
+                VoiceOverviewCard(
+                    settings = settings,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp),
+                )
                 TTSPlaybackSpeedSetting(
                     speed = settings.defaultTTSPlaybackSpeed,
                     onSpeedChange = {
@@ -376,6 +380,63 @@ private fun TTSProviderList(
 }
 
 @Composable
+private fun VoiceOverviewCard(
+    settings: Settings,
+    modifier: Modifier = Modifier,
+) {
+    val selectedTts = settings.ttsProviders.firstOrNull { it.id == settings.selectedTTSProviderId }
+    val selectedAsr = settings.asrProviders.firstOrNull { it.id == settings.selectedASRProviderId }
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CustomColors.cardColors,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "Voice at a glance",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = "Choose how Nastech speaks and listens. Provider setup stays separate from the everyday controls below.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Speech output", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        selectedTts?.name?.ifBlank { "System voice" } ?: "System voice",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        "${settings.ttsProviders.size} configured provider${if (settings.ttsProviders.size == 1) "" else "s"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Voice input", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        selectedAsr?.name?.ifBlank { "Not selected" } ?: "Not selected",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        "${settings.asrProviders.size} configured provider${if (settings.asrProviders.size == 1) "" else "s"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun TTSPlaybackSpeedSetting(
     speed: Float,
     onSpeedChange: (Float) -> Unit,
@@ -385,9 +446,7 @@ private fun TTSPlaybackSpeedSetting(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
+        colors = CustomColors.cardColors,
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

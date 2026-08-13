@@ -118,6 +118,8 @@ fun SettingGlassAppearancePage(vm: SettingVM = koinViewModel()) {
 private fun GlassPreview(profile: GlassAppearance) {
     val tint = Color(profile.tintArgb)
     val container = if (profile.pureBlack) Color.Black else tint
+    val primaryText = profile.primaryTextArgb?.let(::Color) ?: MaterialTheme.colorScheme.onSurface
+    val secondaryText = profile.secondaryTextArgb?.let(::Color) ?: MaterialTheme.colorScheme.onSurfaceVariant
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = container.copy(alpha = profile.transparency.coerceIn(0.08f, 0.98f))),
@@ -130,8 +132,8 @@ private fun GlassPreview(profile: GlassAppearance) {
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Live preview", style = MaterialTheme.typography.titleMedium)
-            Text("Nastech surfaces update as you move the controls.")
+            Text("Live preview", style = MaterialTheme.typography.titleMedium, color = primaryText)
+            Text("Nastech surfaces update as you move the controls.", color = secondaryText)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -140,7 +142,11 @@ private fun GlassPreview(profile: GlassAppearance) {
                     .background(Color.White.copy(alpha = profile.highlightOpacity.coerceIn(0f, 1f))),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                Text("Chat, cards, settings, and activity rows", modifier = Modifier.padding(horizontal = 12.dp))
+                Text(
+                    "Chat, cards, settings, and activity rows",
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    color = primaryText,
+                )
             }
         }
     }
@@ -168,6 +174,38 @@ private fun GlobalGlassControls(profile: GlassAppearance, onUpdate: (GlassAppear
             GlassSlider("Highlight glow", profile.highlightOpacity) { onUpdate(profile.copy(highlightOpacity = it)) }
             GlassSlider("Color saturation", profile.saturation) { onUpdate(profile.copy(saturation = it)) }
             GlassSlider("Background brightness", profile.backgroundBrightness) { onUpdate(profile.copy(backgroundBrightness = it)) }
+            HorizontalDivider()
+            Text("Typography and colors", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "These controls update foreground text, supporting copy, and interactive accents across Nastech.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OptionalHexColorEditor(
+                label = "Primary text",
+                value = profile.primaryTextArgb,
+                fallback = MaterialTheme.colorScheme.onSurface.value.toLong(),
+                supportingText = "Headings, body text, and icons",
+                onValueChange = { onUpdate(profile.copy(primaryTextArgb = it)) },
+                onReset = { onUpdate(profile.copy(primaryTextArgb = null)) },
+            )
+            OptionalHexColorEditor(
+                label = "Secondary text",
+                value = profile.secondaryTextArgb,
+                fallback = MaterialTheme.colorScheme.onSurfaceVariant.value.toLong(),
+                supportingText = "Descriptions, labels, and outline details",
+                onValueChange = { onUpdate(profile.copy(secondaryTextArgb = it)) },
+                onReset = { onUpdate(profile.copy(secondaryTextArgb = null)) },
+            )
+            OptionalHexColorEditor(
+                label = "Accent color",
+                value = profile.accentArgb,
+                fallback = MaterialTheme.colorScheme.primary.value.toLong(),
+                supportingText = "Buttons, selected states, and emphasis",
+                onValueChange = { onUpdate(profile.copy(accentArgb = it)) },
+                onReset = { onUpdate(profile.copy(accentArgb = null)) },
+            )
+            TextScaleSlider(profile.textScale) { onUpdate(profile.copy(textScale = it)) }
             HorizontalDivider()
             Text("Quick presets", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -245,6 +283,58 @@ private fun GlassSlider(label: String, value: Float, onValueChange: (Float) -> U
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text("$label · ${(value.coerceIn(0f, 1f) * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
         Slider(value = value.coerceIn(0f, 1f), onValueChange = onValueChange, valueRange = 0f..1f)
+    }
+}
+
+@Composable
+private fun OptionalHexColorEditor(
+    label: String,
+    value: Long?,
+    fallback: Long,
+    supportingText: String,
+    onValueChange: (Long) -> Unit,
+    onReset: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        HexTintEditor(
+            label = label,
+            value = value ?: fallback,
+            onValueChange = onValueChange,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = supportingText,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (value != null) {
+                OutlinedButton(onClick = onReset) { Text("Use theme") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TextScaleSlider(value: Float, onValueChange: (Float) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = "Text size · ${"%.0f".format(value.coerceIn(0.85f, 1.30f) * 100)}%",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Slider(
+            value = value.coerceIn(0.85f, 1.30f),
+            onValueChange = onValueChange,
+            valueRange = 0.85f..1.30f,
+        )
+        Text(
+            text = "Compact to accessibility-friendly, applied throughout the app.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

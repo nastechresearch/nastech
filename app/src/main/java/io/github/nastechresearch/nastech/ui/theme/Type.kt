@@ -7,11 +7,41 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import io.github.nastechresearch.nastech.R
 
 val base = Typography()
 val Typography = Typography()
+
+/**
+ * Applies the user-selected text scale to the Material typography system. Keeping this at the
+ * theme boundary means titles, controls, chips, and settings rows remain visually coherent.
+ */
+fun nastechTypography(scale: Float): Typography {
+    val multiplier = scale.coerceIn(0.85f, 1.30f)
+    fun TextStyle.scaled() = copy(
+        fontSize = if (fontSize.isSpecified) fontSize * multiplier else fontSize,
+        lineHeight = if (lineHeight.isSpecified) lineHeight * multiplier else lineHeight,
+    )
+    return Typography.copy(
+        displayLarge = Typography.displayLarge.scaled(),
+        displayMedium = Typography.displayMedium.scaled(),
+        displaySmall = Typography.displaySmall.scaled(),
+        headlineLarge = Typography.headlineLarge.scaled(),
+        headlineMedium = Typography.headlineMedium.scaled(),
+        headlineSmall = Typography.headlineSmall.scaled(),
+        titleLarge = Typography.titleLarge.scaled(),
+        titleMedium = Typography.titleMedium.scaled(),
+        titleSmall = Typography.titleSmall.scaled(),
+        bodyLarge = Typography.bodyLarge.scaled(),
+        bodyMedium = Typography.bodyMedium.scaled(),
+        bodySmall = Typography.bodySmall.scaled(),
+        labelLarge = Typography.labelLarge.scaled(),
+        labelMedium = Typography.labelMedium.scaled(),
+        labelSmall = Typography.labelSmall.scaled(),
+    )
+}
 
 // Set of Material typography styles to start with
 //val Typography = Typography(

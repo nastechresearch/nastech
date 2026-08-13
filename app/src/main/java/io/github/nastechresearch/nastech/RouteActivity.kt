@@ -78,6 +78,7 @@ import io.github.nastechresearch.nastech.ui.hooks.readBooleanPreference
 import io.github.nastechresearch.nastech.ui.hooks.readStringPreference
 import io.github.nastechresearch.nastech.ui.hooks.rememberCustomTtsState
 import io.github.nastechresearch.nastech.ui.hooks.rememberCustomAsrState
+import io.github.nastechresearch.nastech.ui.pages.agent.AgentBridgePage
 import io.github.nastechresearch.nastech.ui.pages.assistant.AssistantPage
 import io.github.nastechresearch.nastech.ui.pages.assistant.detail.AssistantBasicPage
 import io.github.nastechresearch.nastech.ui.pages.assistant.detail.AssistantDetailPage
@@ -103,6 +104,7 @@ import io.github.nastechresearch.nastech.ui.pages.extensions.workspace.Workspace
 import me.rerere.workspace.WorkspaceStorageArea
 import io.github.nastechresearch.nastech.ui.pages.favorite.FavoritePage
 import io.github.nastechresearch.nastech.ui.pages.history.HistoryPage
+import io.github.nastechresearch.nastech.ui.pages.home.HomePage
 import io.github.nastechresearch.nastech.ui.pages.imggen.ImageGenPage
 import io.github.nastechresearch.nastech.ui.pages.log.LogPage
 import io.github.nastechresearch.nastech.ui.pages.search.SearchPage
@@ -296,10 +298,10 @@ class RouteActivity : ComponentActivity() {
         val requiresWelcome = settings.onboardingAcceptedVersion != BuildConfig.VERSION_NAME
         val backStack = if (requiresWelcome) {
             rememberNavBackStack(Screen.Welcome(initialChatIds.last()))
-        } else if (initialChatIds.size > 1) {
-            rememberNavBackStack(Screen.Chat(initialChatIds[0]), Screen.Chat(initialChatIds[1]))
+        } else if (deepLinkConversationId != null) {
+            rememberNavBackStack(Screen.Chat(initialChatIds.last()))
         } else {
-            rememberNavBackStack(Screen.Chat(initialChatIds[0]))
+            rememberNavBackStack(Screen.Home)
         }
         SideEffect { this@RouteActivity.navStack = backStack }
 
@@ -372,6 +374,20 @@ class RouteActivity : ComponentActivity() {
                                 slideOutHorizontally { it }
                         },
                         entryProvider = entryProvider {
+                            entry<Screen.AgentBridge>(
+                                metadata = NavDisplay.transitionSpec { fadeIn() togetherWith fadeOut() }
+                                    + NavDisplay.popTransitionSpec { fadeIn() togetherWith fadeOut() }
+                            ) {
+                                AgentBridgePage()
+                            }
+
+                            entry<Screen.Home>(
+                                metadata = NavDisplay.transitionSpec { fadeIn() togetherWith fadeOut() }
+                                    + NavDisplay.popTransitionSpec { fadeIn() togetherWith fadeOut() }
+                            ) {
+                                HomePage()
+                            }
+
                             entry<Screen.Chat>(
                                 metadata = NavDisplay.transitionSpec { fadeIn() togetherWith fadeOut() }
                                         + NavDisplay.popTransitionSpec { fadeIn() togetherWith fadeOut() }
@@ -699,6 +715,12 @@ class RouteActivity : ComponentActivity() {
 }
 
 sealed interface Screen : NavKey {
+    @Serializable
+    data object AgentBridge : Screen
+
+    @Serializable
+    data object Home : Screen
+
     @Serializable
     data class Chat(
         val id: String,

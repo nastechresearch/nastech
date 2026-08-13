@@ -19,6 +19,12 @@ data class GlassAppearance(
     val saturation: Float = 1.0f,
     val backgroundBrightness: Float = 1.0f,
     val motionEnabled: Boolean = true,
+    /** Optional global foreground overrides. Null retains the active Material color scheme. */
+    val primaryTextArgb: Long? = null,
+    val secondaryTextArgb: Long? = null,
+    val accentArgb: Long? = null,
+    /** Multiplier applied to the entire Compose font scale, from compact to accessibility-friendly. */
+    val textScale: Float = 1.0f,
     val surfaceOverrides: Map<GlassSurface, GlassSurfaceAppearance> = emptyMap(),
 ) {
     fun appearanceFor(surface: GlassSurface): GlassSurfaceAppearance =
