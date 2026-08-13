@@ -975,6 +975,8 @@ data class DisplaySetting(
     val chatCustomFontName: String = "",
     val enableVolumeKeyScroll: Boolean = false,
     val volumeKeyScrollRatio: Float = 1.0f,
+    /** Width of the configurable chat sidebar, constrained in the UI for usable layouts. */
+    val drawerWidthDp: Int = 320,
 )
 
 @Serializable

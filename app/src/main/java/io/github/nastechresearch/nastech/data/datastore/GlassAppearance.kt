@@ -45,6 +45,8 @@ enum class GlassSurface {
     BOTTOM_SHEET,
     BUTTON,
     SETTINGS,
+    /** Dedicated material for the conversation drawer/sidebar. */
+    SIDEBAR,
     ACTIVITY,
 }
 

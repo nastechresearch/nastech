@@ -1,6 +1,7 @@
 package io.github.nastechresearch.nastech.ui.pages.chat
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -70,6 +71,7 @@ import me.rerere.hugeicons.stroke.Sparkles
 import me.rerere.hugeicons.stroke.TransactionHistory
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.Screen
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.datastore.Settings
 import io.github.nastechresearch.nastech.data.model.Assistant
 import io.github.nastechresearch.nastech.data.model.Conversation
@@ -83,6 +85,8 @@ import io.github.nastechresearch.nastech.ui.components.ui.UIAvatar
 import io.github.nastechresearch.nastech.ui.components.ui.UpdateCard
 import androidx.compose.ui.draw.clip
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.ui.context.Navigator
 import com.dokar.sonner.ToastType
 import io.github.nastechresearch.nastech.ui.hooks.EditStateContent
@@ -134,6 +138,14 @@ fun ChatDrawerContent(
     val conversationJobs by vm.conversationJobs.collectAsStateWithLifecycle(
         initialValue = emptyMap(),
     )
+    val sidebarGlass = glassSurface(
+        GlassSurface.SIDEBAR,
+        MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
+    val sidebarContentColor = glassContentColor(
+        GlassSurface.SIDEBAR,
+        MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
 
     // 昵称编辑状态
     val nicknameEditState = useEditState<String> { newNickname ->
@@ -163,7 +175,11 @@ fun ChatDrawerContent(
     var showMenuPopup by remember { mutableStateOf(false) }
 
     ModalDrawerSheet(
-        modifier = Modifier.width(300.dp)
+        modifier = Modifier
+            .width(settings.displaySetting.drawerWidthDp.coerceIn(280, 420).dp)
+            .border(1.dp, sidebarGlass.border, MaterialTheme.shapes.large),
+        drawerContainerColor = sidebarGlass.container,
+        drawerContentColor = sidebarContentColor,
     ) {
         Column(
             modifier = Modifier.padding(8.dp),

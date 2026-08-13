@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.nastechresearch.nastech.Screen
 import io.github.nastechresearch.nastech.data.datastore.GlassAppearance
@@ -105,6 +106,20 @@ fun SettingGlassAppearancePage(vm: SettingVM = koinViewModel()) {
                 GlobalGlassControls(
                     profile = settings.glassAppearance,
                     onUpdate = update,
+                )
+            }
+            item {
+                SidebarControls(
+                    widthDp = settings.displaySetting.drawerWidthDp,
+                    onWidthChange = { width ->
+                        vm.updateSettings(
+                            settings.copy(
+                                displaySetting = settings.displaySetting.copy(
+                                    drawerWidthDp = width.coerceIn(280, 420),
+                                ),
+                            ),
+                        )
+                    },
                 )
             }
             item {
@@ -249,12 +264,39 @@ private fun GlobalGlassControls(profile: GlassAppearance, onUpdate: (GlassAppear
     }
 }
 
+@Composable
+private fun SidebarControls(widthDp: Int, onWidthChange: (Int) -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), colors = CustomColors.cardColors) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Chat sidebar", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "Set a comfortable drawer width. Its tint, transparency, blur, border, and highlight can be adjusted separately in Workspace surfaces.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Width: ${widthDp.coerceIn(280, 420)} dp",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Slider(
+                value = widthDp.coerceIn(280, 420).toFloat(),
+                onValueChange = { onWidthChange(it.roundToInt()) },
+                valueRange = 280f..420f,
+            )
+        }
+    }
+}
+
 private enum class GlassSurfaceGroup(
     val title: String,
     val description: String,
     val surfaces: List<GlassSurface>,
 ) {
-    WORKSPACE("Workspace", "Background, navigation, cards, and settings surfaces.", listOf(GlassSurface.APP_BACKGROUND, GlassSurface.TOP_BAR, GlassSurface.BOTTOM_BAR, GlassSurface.CARD, GlassSurface.LIST_ITEM, GlassSurface.SETTINGS)),
+    WORKSPACE("Workspace", "Background, navigation, cards, settings, and sidebar surfaces.", listOf(GlassSurface.APP_BACKGROUND, GlassSurface.TOP_BAR, GlassSurface.BOTTOM_BAR, GlassSurface.SIDEBAR, GlassSurface.CARD, GlassSurface.LIST_ITEM, GlassSurface.SETTINGS)),
     CHAT("Chat", "Composer and message materials for a focused conversation view.", listOf(GlassSurface.CHAT_INPUT, GlassSurface.USER_BUBBLE, GlassSurface.ASSISTANT_BUBBLE, GlassSurface.ACTIVITY)),
     OVERLAYS("Overlays", "Dialogs and bottom sheets that sit above the workspace.", listOf(GlassSurface.DIALOG, GlassSurface.BOTTOM_SHEET)),
     CONTROLS("Controls", "Buttons and interactive material emphasis.", listOf(GlassSurface.BUTTON)),
@@ -544,5 +586,6 @@ private fun GlassSurface.displayName(): String = when (this) {
     GlassSurface.BOTTOM_SHEET -> "Bottom sheets"
     GlassSurface.BUTTON -> "Buttons"
     GlassSurface.SETTINGS -> "Settings"
+    GlassSurface.SIDEBAR -> "Chat sidebar"
     GlassSurface.ACTIVITY -> "Reasoning and tools"
 }
