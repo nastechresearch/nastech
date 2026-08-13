@@ -363,8 +363,8 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                         headlineContent = { Text(stringResource(R.string.setting_page_data_backup)) },
                     )
                     item(
-                        onClick = { navController.navigate(Screen.SettingFiles) },
-                        leadingContent = { Icon(HugeIcons.ImageUpload, null) },
+                        onClick = { navController.navigate(Screen.SettingChatStorage) },
+                        leadingContent = { Icon(HugeIcons.Database02, null) },
                         supportingContent = {
                             if (storageState.first == -1) {
                                 Text(stringResource(R.string.calculating))

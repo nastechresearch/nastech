@@ -121,6 +121,7 @@ import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesUIPa
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingThemePage
 import io.github.nastechresearch.nastech.ui.pages.welcome.WelcomePage
 import io.github.nastechresearch.nastech.ui.pages.voice.VoiceCallPage
+import io.github.nastechresearch.nastech.ui.pages.setting.SettingChatStoragePage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingFilesPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingMcpPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingModelPage
@@ -556,6 +557,10 @@ class RouteActivity : ComponentActivity() {
                                 SettingFilesPage()
                             }
 
+                            entry<Screen.SettingChatStorage> {
+                                SettingChatStoragePage()
+                            }
+
                             entry<Screen.SettingWeb> {
                                 SettingWebPage()
                             }
@@ -847,6 +852,9 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object SettingFiles : Screen
+
+    @Serializable
+    data object SettingChatStorage : Screen
 
     @Serializable
     data object SettingWeb : Screen
