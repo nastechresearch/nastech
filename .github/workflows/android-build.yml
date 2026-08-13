@@ -2,9 +2,25 @@ name: Build Nastech release APK
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish the signed universal APK as a GitHub release
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: Release tag to publish when release publication is enabled
+        required: false
+        default: ""
+        type: string
+      release_title:
+        description: Release title to publish when release publication is enabled
+        required: false
+        default: ""
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: nastech-release-${{ github.workflow }}-${{ github.ref }}
@@ -126,3 +142,18 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish signed GitHub release
+        if: success() && inputs.publish_release == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_TITLE: ${{ inputs.release_title }}
+        run: |
+          test -n "$RELEASE_TAG"
+          apk_path="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -type f | head -n1)"
+          test -n "$apk_path"
+          gh release create "$RELEASE_TAG" "$apk_path#Nastech-${RELEASE_TAG}.apk" \
+            --target "$GITHUB_SHA" \
+            --title "${RELEASE_TITLE:-Nastech $RELEASE_TAG}" \
+            --notes "Signed Nastech Android release built from $GITHUB_SHA."
