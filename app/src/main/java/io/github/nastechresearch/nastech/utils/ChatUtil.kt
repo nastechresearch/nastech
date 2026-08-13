@@ -21,7 +21,7 @@ fun navigateToChatPage(
     navigator.clearAndNavigate(
         Screen.Chat(
             id = chatId.toString(),
-            text = initText,
+            text = initText?.base64Encode(),
             files = initFiles.map { it.toString() },
             nodeId = nodeId?.toString(),
         )

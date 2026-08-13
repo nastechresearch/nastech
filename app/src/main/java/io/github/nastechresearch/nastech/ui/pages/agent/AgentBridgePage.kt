@@ -130,6 +130,14 @@ fun AgentBridgePage() {
             }
             item {
                 AgentControlCard(
+                    title = "Voice in chat",
+                    body = "Configure speech input and spoken replies used directly from the Nastech chat composer.",
+                    icon = HugeIcons.Message01,
+                    onClick = { navigator.navigate(Screen.SettingSpeech) },
+                )
+            }
+            item {
+                AgentControlCard(
                     title = "Sub-agents",
                     body = "Create focused assistant roles for larger tasks from the same Nastech conversation workflow.",
                     icon = HugeIcons.Sparkles,
@@ -160,6 +168,10 @@ fun AgentBridgePage() {
             onStartResearch = {
                 showActionsSheet = false
                 navigateToChatPage(navigator, initText = "Research this topic and prepare a structured brief: ")
+            },
+            onStartVoice = {
+                showActionsSheet = false
+                navigateToChatPage(navigator, initText = "Let’s work through this by voice: ")
             },
             onOpenSkills = {
                 showActionsSheet = false
@@ -272,6 +284,7 @@ private fun AgentActionsSheet(
     onDismiss: () -> Unit,
     onStartPlanning: () -> Unit,
     onStartResearch: () -> Unit,
+    onStartVoice: () -> Unit,
     onOpenSkills: () -> Unit,
     onOpenWorkspaces: () -> Unit,
 ) {
@@ -290,6 +303,7 @@ private fun AgentActionsSheet(
             )
             AgentSheetAction("Plan a project", "Open a chat with a project-planning starter", HugeIcons.Sparkles, onStartPlanning)
             AgentSheetAction("Research a topic", "Open a chat with a research-brief starter", HugeIcons.Message01, onStartResearch)
+            AgentSheetAction("Start a voice-ready chat", "Open the normal chat composer with voice input when configured", HugeIcons.Message01, onStartVoice)
             AgentSheetAction("Choose skills", "Manage reusable capabilities for your assistants", HugeIcons.Puzzle, onOpenSkills)
             AgentSheetAction("Attach workspace context", "Open local workspaces and project files", HugeIcons.Folder01, onOpenWorkspaces)
             Spacer(Modifier.height(8.dp))

@@ -29,7 +29,6 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.ui.context.LocalNavController
-import io.github.nastechresearch.nastech.utils.base64Encode
 import io.github.nastechresearch.nastech.utils.navigateToChatPage
 import io.github.nastechresearch.nastech.utils.plus
 import org.koin.androidx.compose.koinViewModel
@@ -87,7 +86,7 @@ fun ShareHandlerPage(text: String, image: String?) {
                             vm.updateAssistant(assistant.id)
                             navigateToChatPage(
                                 navigator = navController,
-                                initText = vm.shareText.base64Encode(),
+                                initText = vm.shareText,
                                 initFiles = image?.let { listOf(it.toUri()) } ?: emptyList()
                             )
                         }

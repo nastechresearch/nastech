@@ -20,8 +20,8 @@ fun String.base64Encode(): String {
 }
 
 @OptIn(ExperimentalEncodingApi::class)
-fun String.base64Decode(): String {
-    return String(Base64.decode(this))
+fun String.base64Decode(): String? {
+    return runCatching { String(Base64.decode(this), Charsets.UTF_8) }.getOrNull()
 }
 
 fun String.escapeHtml(): String {

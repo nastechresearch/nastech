@@ -168,9 +168,12 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>, nodeId: Uuid? = null) {
             }
             inputState.messageContent = parts
         }
-        text?.base64Decode()?.let { decodedText ->
-            if (decodedText.isNotEmpty()) {
-                inputState.setMessageText(decodedText)
+        text?.let { incomingText ->
+            // New in-app navigation encodes the initial prompt. Older intents and malformed
+            // external input may be plain text, so decoding must never prevent chat startup.
+            val initialText = incomingText.base64Decode() ?: incomingText
+            if (initialText.isNotEmpty()) {
+                inputState.setMessageText(initialText)
             }
         }
     }
