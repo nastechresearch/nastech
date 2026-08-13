@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -186,8 +187,7 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                gridItems(count = filteredProviders.size, key = { filteredProviders[it].id }) { index ->
-                    val provider = filteredProviders[index]
+                gridItems(filteredProviders, key = { it.id }) { provider ->
                     ProviderGridTile(provider = provider, onClick = {
                         navController.navigate(Screen.SettingProviderDetail(providerId = provider.id.toString()))
                     })
