@@ -29,6 +29,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -98,15 +101,7 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
     val navController = LocalNavController.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var searchQuery by remember { mutableStateOf("") }
-    val lazyListState = rememberLazyListState()
     var providerToDelete by remember { mutableStateOf<ProviderSetting?>(null) }
-    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newProviders = settings.providers.toMutableList().apply {
-            add(to.index, removeAt(from.index))
-        }
-        vm.updateSettings(settings.copy(providers = newProviders))
-    }
-
     val filteredProviders = remember(settings.providers, searchQuery) {
         if (searchQuery.isBlank()) {
             settings.providers
@@ -184,54 +179,18 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
             )
 
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .imePadding(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp) +
-                    PaddingValues(bottom = innerPadding.calculateBottomPadding()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                state = lazyListState,
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(156.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f).imePadding(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp) + PaddingValues(bottom = innerPadding.calculateBottomPadding()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(filteredProviders, key = { it.id }) { provider ->
-                    ReorderableItem(
-                        state = reorderableState,
-                        key = provider.id
-                    ) { isDragging ->
-                        ProviderItem(
-                            modifier = Modifier
-                                .scale(if (isDragging) 0.95f else 1f)
-                                .fillMaxWidth(),
-                            provider = provider,
-                            dragHandle = {
-                                val haptic = LocalHapticFeedback.current
-                                IconButton(
-                                    onClick = {},
-                                    modifier = Modifier
-                                        .longPressDraggableHandle(
-                                            onDragStarted = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                            },
-                                            onDragStopped = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                            }
-                                        )
-                                ) {
-                                    Icon(
-                                        imageVector = HugeIcons.DragDropHorizontal,
-                                        contentDescription = null
-                                    )
-                                }
-                            },
-                            onClick = {
-                                navController.navigate(Screen.SettingProviderDetail(providerId = provider.id.toString()))
-                            },
-                            onLongClick = {
-                                providerToDelete = provider
-                            }
-                        )
-                    }
+                gridItems(count = filteredProviders.size, key = { filteredProviders[it].id }) { index ->
+                    val provider = filteredProviders[index]
+                    ProviderGridTile(provider = provider, onClick = {
+                        navController.navigate(Screen.SettingProviderDetail(providerId = provider.id.toString()))
+                    })
                 }
             }
         }
@@ -273,6 +232,25 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
                     }
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun ProviderGridTile(provider: ProviderSetting, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = CustomColors.listItemColors.containerColor),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            AutoAIIcon(name = provider.name, modifier = Modifier.size(38.dp))
+            Text(provider.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(if (provider.enabled) "Configured" else "Disabled", style = MaterialTheme.typography.labelMedium, color = if (provider.enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
