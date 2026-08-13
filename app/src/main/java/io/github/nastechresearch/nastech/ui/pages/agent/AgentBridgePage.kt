@@ -41,6 +41,7 @@ import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
 import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.navigateToChatPage
+import io.github.nastechresearch.nastech.utils.navigateToVoiceCall
 import io.github.nastechresearch.nastech.utils.plus
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
@@ -171,7 +172,7 @@ fun AgentBridgePage() {
             },
             onStartVoice = {
                 showActionsSheet = false
-                navigateToChatPage(navigator, initText = "Let’s work through this by voice: ")
+                navigateToVoiceCall(navigator)
             },
             onOpenSkills = {
                 showActionsSheet = false

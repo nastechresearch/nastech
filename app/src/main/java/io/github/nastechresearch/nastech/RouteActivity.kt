@@ -120,6 +120,7 @@ import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesGene
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesUIPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingThemePage
 import io.github.nastechresearch.nastech.ui.pages.welcome.WelcomePage
+import io.github.nastechresearch.nastech.ui.pages.voice.VoiceCallPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingFilesPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingMcpPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingModelPage
@@ -398,6 +399,13 @@ class RouteActivity : ComponentActivity() {
                                     files = key.files.map { it.toUri() },
                                     nodeId = key.nodeId?.let { Uuid.parse(it) }
                                 )
+                            }
+
+                            entry<Screen.VoiceCall>(
+                                metadata = NavDisplay.transitionSpec { fadeIn() togetherWith fadeOut() }
+                                    + NavDisplay.popTransitionSpec { fadeIn() togetherWith fadeOut() }
+                            ) { key ->
+                                VoiceCallPage(id = Uuid.parse(key.id))
                             }
 
                             entry<Screen.Welcome> { key ->
@@ -728,6 +736,9 @@ sealed interface Screen : NavKey {
         val files: List<String> = emptyList(),
         val nodeId: String? = null
     ) : Screen
+
+    @Serializable
+    data class VoiceCall(val id: String) : Screen
 
     @Serializable
     data class Welcome(val chatId: String) : Screen

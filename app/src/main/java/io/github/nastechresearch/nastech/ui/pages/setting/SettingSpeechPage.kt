@@ -77,7 +77,7 @@ import io.github.nastechresearch.nastech.ui.context.LocalTTSState
 import io.github.nastechresearch.nastech.ui.pages.setting.components.ASRProviderConfigure
 import io.github.nastechresearch.nastech.ui.pages.setting.components.TTSProviderConfigure
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
-import io.github.nastechresearch.nastech.utils.navigateToChatPage
+import io.github.nastechresearch.nastech.utils.navigateToVoiceCall
 import io.github.nastechresearch.nastech.utils.plus
 import me.rerere.tts.provider.TTSProviderSetting
 import org.koin.androidx.compose.koinViewModel
@@ -153,7 +153,7 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
                 VoiceOverviewCard(
                     settings = settings,
                     onStartVoiceConversation = {
-                        navigateToChatPage(navController, initText = "Let’s have a voice conversation about: ")
+                        navigateToVoiceCall(navController)
                     },
                     modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 8.dp),
                 )

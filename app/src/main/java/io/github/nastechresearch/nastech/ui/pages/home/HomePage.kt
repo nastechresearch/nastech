@@ -51,6 +51,7 @@ import io.github.nastechresearch.nastech.ui.pages.setting.SettingVM
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
 import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.navigateToChatPage
+import io.github.nastechresearch.nastech.utils.navigateToVoiceCall
 import io.github.nastechresearch.nastech.utils.plus
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Bookshelf01
@@ -106,7 +107,7 @@ fun HomePage(vm: SettingVM = koinViewModel()) {
                         contentPadding = contentPadding,
                         onQuickActions = { showQuickActions = true },
                         onNewConversation = { navigateToChatPage(navigator) },
-                        onVoice = { navigator.navigate(Screen.SettingSpeech) },
+                        onVoice = { navigateToVoiceCall(navigator) },
                         onImage = { navigator.navigate(Screen.ImageGen) },
                         onAgent = { navigator.navigate(Screen.AgentBridge) },
                     )
@@ -140,7 +141,7 @@ fun HomePage(vm: SettingVM = koinViewModel()) {
                 },
                 onVoice = {
                     showQuickActions = false
-                    navigator.navigate(Screen.SettingSpeech)
+                    navigateToVoiceCall(navigator)
                 },
                 onWorkspace = {
                     showQuickActions = false
@@ -446,7 +447,7 @@ private fun WorkspaceQuickActionsSheet(
             )
             QuickSheetAction("New conversation", "Start with a blank chat", HugeIcons.MessageAdd01, onNewConversation)
             QuickSheetAction("Create an image", "Open image generation", HugeIcons.Image02, onImage)
-            QuickSheetAction("Voice settings", "Choose speech and voice input providers", HugeIcons.Mic01, onVoice)
+            QuickSheetAction("Voice call", "Start the animated Nastech voice session", HugeIcons.Mic01, onVoice)
             QuickSheetAction("Open workspaces", "Manage assistant files and local projects", HugeIcons.Folder01, onWorkspace)
             Spacer(Modifier.height(8.dp))
         }
