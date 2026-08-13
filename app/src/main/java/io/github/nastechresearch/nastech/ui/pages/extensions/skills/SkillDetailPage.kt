@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BorderStroke
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -51,6 +54,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import io.github.nastechresearch.nastech.R
@@ -75,6 +79,9 @@ import io.github.nastechresearch.nastech.ui.components.nav.BackButton
 import io.github.nastechresearch.nastech.ui.components.ui.RikkaConfirmDialog
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.ui.theme.GlassSurface
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.plus
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -85,6 +92,7 @@ fun SkillDetailPage(skillName: String) {
     LaunchedEffect(skillName) { vm.init(skillName) }
 
     val tree by vm.tree.collectAsStateWithLifecycle()
+    val source by vm.source.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val toaster = LocalToaster.current
 
@@ -92,6 +100,8 @@ fun SkillDetailPage(skillName: String) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<SkillFile?>(null) }
     var showTester by rememberSaveable { mutableStateOf(false) }
+    var showRefreshConfirm by rememberSaveable { mutableStateOf(false) }
+    var refreshing by rememberSaveable { mutableStateOf(false) }
     val deleteFailedMsg = stringResource(R.string.skill_detail_page_delete_failed)
 
     val scrollState = rememberScrollState()
@@ -110,6 +120,14 @@ fun SkillDetailPage(skillName: String) {
                 title = { Text(skillName) },
                 navigationIcon = { BackButton() },
                 actions = {
+                    if (source != null) {
+                        TextButton(
+                            enabled = !refreshing,
+                            onClick = { showRefreshConfirm = true },
+                        ) {
+                            Text(if (refreshing) "Updating…" else "Update")
+                        }
+                    }
                     IconButton(onClick = { showTester = true }) {
                         Icon(
                             imageVector = Lucide.Play,
@@ -133,7 +151,7 @@ fun SkillDetailPage(skillName: String) {
             }
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = CustomColors.topBarColors.containerColor,
+        containerColor = Color.Transparent,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -141,6 +159,14 @@ fun SkillDetailPage(skillName: String) {
                 .verticalScroll(scrollState)
                 .padding(innerPadding + PaddingValues(8.dp)),
         ) {
+            source?.let { metadata ->
+                SourceStatusCard(
+                    sourceUrl = metadata.sourceUrl,
+                    lastUpdatedMillis = metadata.lastUpdatedMillis,
+                    refreshing = refreshing,
+                    onRefresh = { showRefreshConfirm = true },
+                )
+            }
             FileTree(
                 nodes = tree,
                 depth = 0,
@@ -177,6 +203,24 @@ fun SkillDetailPage(skillName: String) {
     }
 
     RikkaConfirmDialog(
+        show = showRefreshConfirm,
+        title = "Update this skill?",
+        confirmText = "Update",
+        dismissText = stringResource(R.string.cancel),
+        onConfirm = {
+            showRefreshConfirm = false
+            refreshing = true
+            vm.refreshFromSource { success, message ->
+                refreshing = false
+                toaster.show(if (success) "Skill updated from GitHub" else message)
+            }
+        },
+        onDismiss = { showRefreshConfirm = false },
+    ) {
+        Text("Nastech will download the current files from the saved source and replace this installed skill. Review your local edits before continuing.")
+    }
+
+    RikkaConfirmDialog(
         show = deleteTarget != null,
         title = stringResource(R.string.skill_detail_page_delete_file),
         confirmText = stringResource(R.string.delete),
@@ -199,6 +243,54 @@ fun SkillDetailPage(skillName: String) {
             skillName = skillName,
             onDismiss = { showTester = false },
         )
+    }
+}
+
+@Composable
+private fun SourceStatusCard(
+    sourceUrl: String,
+    lastUpdatedMillis: Long,
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
+) {
+    val contentColor = glassContentColor(GlassSurface.CARD, MaterialTheme.colorScheme.onSurface)
+    Surface(
+        color = glassSurface(GlassSurface.CARD, MaterialTheme.colorScheme.surfaceContainer).container,
+        contentColor = contentColor,
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, contentColor.copy(alpha = 0.14f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "CONNECTED GIT SOURCE",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = contentColor.copy(alpha = 0.78f),
+            )
+            Text(
+                text = sourceUrl,
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor,
+                modifier = Modifier.heightIn(max = 48.dp),
+            )
+            Text(
+                text = "Last local update: ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(lastUpdatedMillis))}",
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor.copy(alpha = 0.68f),
+            )
+            FilledTonalButton(
+                onClick = onRefresh,
+                enabled = !refreshing,
+            ) {
+                Text(if (refreshing) "Updating source…" else "Refresh from Git")
+            }
+        }
     }
 }
 

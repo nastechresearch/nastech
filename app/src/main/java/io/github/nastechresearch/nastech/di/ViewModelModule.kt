@@ -76,9 +76,16 @@ val viewModelModule = module {
             context = get(),
             skillManager = get(),
             urlImporter = get(),
+            gitHubImporter = get(),
         )
     }
-    viewModelOf(::SkillDetailVM)
+    viewModel<SkillDetailVM> {
+        SkillDetailVM(
+            context = get(),
+            skillManager = get(),
+            gitHubImporter = get(),
+        )
+    }
     viewModelOf(::WorkspaceVM)
     viewModel<WorkspaceDetailVM> {
         WorkspaceDetailVM(

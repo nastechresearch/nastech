@@ -25,6 +25,9 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.okhttp)
+    implementation(libs.onnxruntime.android)
+    implementation(libs.sherpa.onnx.android)
+    implementation(libs.commons.compress)
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)

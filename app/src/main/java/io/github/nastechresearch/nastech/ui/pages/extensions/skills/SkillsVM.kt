@@ -18,11 +18,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withTimeoutOrNull
 import io.github.nastechresearch.nastech.skills.CatalogEntry
+import io.github.nastechresearch.nastech.skills.GitHubSkillImporter
 import io.github.nastechresearch.nastech.skills.SkillCatalog
 import io.github.nastechresearch.nastech.skills.SkillUrlImporter
 import io.github.nastechresearch.nastech.skills.SkillZipError
 import io.github.nastechresearch.nastech.skills.SkillZipImporter
 import io.github.nastechresearch.nastech.skills.loadCatalogFromAssets
+import io.github.nastechresearch.nastech.skills.parseSkillCatalogJson
 import java.util.LinkedHashMap
 import org.json.JSONArray
 import java.io.File
@@ -35,11 +37,17 @@ class SkillsVM(
     private val context: Context,
     private val skillManager: SkillManager,
     private val urlImporter: SkillUrlImporter,
+    private val gitHubImporter: GitHubSkillImporter,
 ) : ViewModel() {
 
     companion object {
         private const val TAG = "SkillsVM"
         private const val MAX_MD_BYTES = 1L * 1024 * 1024 // 1 MB cap on local .md
+        private const val MAX_CATALOG_BYTES = 1L * 1024 * 1024
+        private const val MAX_CATALOG_ENTRIES = 500
+        private const val CATALOG_CACHE_FILE = "skill-catalog.json"
+        private const val CURATED_CATALOG_URL =
+            "https://raw.githubusercontent.com/nastechresearch/nastech/main/app/src/main/assets/skill-catalog.json"
     }
     private val _skills = MutableStateFlow<List<SkillMetadata>>(emptyList())
     val skills = _skills.asStateFlow()
@@ -53,8 +61,12 @@ class SkillsVM(
         .map { list -> list.mapTo(mutableSetOf()) { it.name } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
-    /** Phase 19D — bundled catalog. Loaded lazily on first access. */
-    val catalog: SkillCatalog by lazy { loadCatalogFromAssets(context) }
+    /**
+     * Curated catalogue snapshot. The bundled asset is the offline baseline; a successful
+     * user-triggered refresh replaces this snapshot with a verified cache from Nastech's source.
+     */
+    private val _catalog = MutableStateFlow(loadCachedCatalog() ?: loadCatalogFromAssets(context))
+    val catalog = _catalog.asStateFlow()
 
     init {
         loadSkills()
@@ -85,59 +97,48 @@ class SkillsVM(
 
     fun getSkillsDir() = skillManager.getSkillsDir()
 
+    /**
+     * Refreshes only catalogue descriptions and source links from Nastech's public index.
+     * This never installs a skill, executes a repository, or changes an installed skill.
+     */
+    fun refreshCatalog(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val raw = downloadCatalog(CURATED_CATALOG_URL)
+            val parsed = raw?.let(::parseSkillCatalogJson)
+            val validationError = parsed?.let(::validateCatalog)
+            if (parsed == null || validationError != null) {
+                withContext(Dispatchers.Main) {
+                    onResult(false, validationError ?: "Could not refresh the catalogue")
+                }
+                return@launch
+            }
+            val cache = File(context.filesDir, CATALOG_CACHE_FILE)
+            val temp = File(context.filesDir, "$CATALOG_CACHE_FILE.tmp")
+            runCatching {
+                temp.writeText(raw)
+                if (!temp.renameTo(cache)) {
+                    cache.delete()
+                    if (!temp.renameTo(cache)) error("Could not save the refreshed catalogue")
+                }
+            }.onFailure {
+                temp.delete()
+                withContext(Dispatchers.Main) { onResult(false, "Could not save the refreshed catalogue") }
+                return@launch
+            }
+            _catalog.value = parsed
+            withContext(Dispatchers.Main) { onResult(true, "Sources refreshed") }
+        }
+    }
+
     fun importSkillFromGitHub(repoUrl: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val info = parseGitHubUrl(repoUrl) ?: run {
-                    withContext(Dispatchers.Main) { onResult(false, "Invalid GitHub repository URL") }
-                    return@launch
+            val result = gitHubImporter.importFromDirectory(repoUrl)
+            _skills.value = skillManager.listSkills()
+            withContext(Dispatchers.Main) {
+                when (result) {
+                    is GitHubSkillImporter.Result.Ok -> onResult(true, result.skillName)
+                    is GitHubSkillImporter.Result.Err -> onResult(false, result.detail)
                 }
-
-                // Collect all files recursively via GitHub Contents API
-                val files = mutableListOf<Pair<String, String>>() // relativePath -> downloadUrl
-                val listed = listFilesRecursively(info.owner, info.repo, info.branch, info.path, info.path, files)
-                if (!listed) {
-                    withContext(Dispatchers.Main) { onResult(false, "Failed to list GitHub directory contents") }
-                    return@launch
-                }
-
-                val skillMdEntry = files.find { it.first == "SKILL.md" } ?: run {
-                    withContext(Dispatchers.Main) { onResult(false, "No SKILL.md found in the directory") }
-                    return@launch
-                }
-
-                val skillMdContent = downloadText(skillMdEntry.second) ?: run {
-                    withContext(Dispatchers.Main) { onResult(false, "Failed to download SKILL.md — check the URL and your network") }
-                    return@launch
-                }
-
-                val frontmatter = SkillFrontmatterParser.parse(skillMdContent)
-                val name = frontmatter["name"]
-                if (name.isNullOrBlank()) {
-                    withContext(Dispatchers.Main) { onResult(false, "SKILL.md is missing the required 'name' field") }
-                    return@launch
-                }
-
-                val fileContents = LinkedHashMap<String, String>()
-                for ((relativePath, downloadUrl) in files) {
-                    val content = downloadText(downloadUrl)
-                    if (content == null) {
-                        withContext(Dispatchers.Main) { onResult(false, "Failed to download file: $relativePath") }
-                        return@launch
-                    }
-                    fileContents[relativePath] = content
-                }
-
-                val saved = skillManager.saveSkillFilesAtomically(name, fileContents)
-                if (!saved) {
-                    withContext(Dispatchers.Main) { onResult(false, "Failed to save skill files") }
-                    return@launch
-                }
-
-                _skills.value = skillManager.listSkills()
-                withContext(Dispatchers.Main) { onResult(true, name) }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) { onResult(false, e.message ?: "Unknown error") }
             }
         }
     }
@@ -209,6 +210,46 @@ class SkillsVM(
             _skills.value = skillManager.listSkills()
             withContext(Dispatchers.Main) { onResult(ok, msg) }
         }
+    }
+
+    private fun loadCachedCatalog(): SkillCatalog? {
+        val cache = File(context.filesDir, CATALOG_CACHE_FILE)
+        if (!cache.isFile || cache.length() > MAX_CATALOG_BYTES) return null
+        val catalog = runCatching { parseSkillCatalogJson(cache.readText()) }.getOrNull() ?: return null
+        return catalog.takeIf { validateCatalog(it) == null }
+    }
+
+    private fun downloadCatalog(url: String): String? {
+        val connection = (URL(url).openConnection() as? HttpURLConnection) ?: return null
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 30_000
+        connection.setRequestProperty("Accept", "application/json")
+        connection.setRequestProperty("User-Agent", "Nastech-Skill-Catalog")
+        return try {
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) return null
+            connection.inputStream.use { input ->
+                val bytes = input.readBytes()
+                if (bytes.size > MAX_CATALOG_BYTES) null else bytes.toString(Charsets.UTF_8)
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun validateCatalog(candidate: SkillCatalog): String? {
+        if (candidate.skills.isEmpty()) return "The refreshed catalogue did not contain any skills"
+        if (candidate.skills.size > MAX_CATALOG_ENTRIES) return "The refreshed catalogue is too large"
+        if (candidate.skills.any { entry ->
+                entry.name.isBlank() || entry.title.isBlank() ||
+                    (entry.sourceUrl != null && !entry.sourceUrl.startsWith("https://"))
+            }
+        ) {
+            return "The refreshed catalogue contains an invalid entry"
+        }
+        if (candidate.skills.map { it.name }.toSet().size != candidate.skills.size) {
+            return "The refreshed catalogue contains duplicate skill names"
+        }
+        return null
     }
 
     private enum class LocalFileType { Markdown, Zip, Unsupported }

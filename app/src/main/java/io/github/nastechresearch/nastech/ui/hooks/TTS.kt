@@ -87,6 +87,9 @@ interface CustomTtsState {
     /** Flow indicating total chunks in queue */
     val totalChunks: StateFlow<Int>
 
+    /** Text of the phrase currently being synthesized or played. */
+    val activeChunkText: StateFlow<String>
+
     /** Unified playback state (status, position, duration, speed, etc.) */
     val playbackState: StateFlow<PlaybackState>
 
@@ -137,6 +140,7 @@ private class CustomTtsStateImpl(
     override val error: StateFlow<String?> get() = controller.error
     override val currentChunk: StateFlow<Int> get() = controller.currentChunk
     override val totalChunks: StateFlow<Int> get() = controller.totalChunks
+    override val activeChunkText: StateFlow<String> get() = controller.activeChunkText
     override val playbackState: StateFlow<PlaybackState> get() = controller.playbackState
 
     fun updateProvider(provider: TTSProviderSetting?) {

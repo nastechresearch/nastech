@@ -75,6 +75,26 @@ sealed class TTSProviderSetting {
         }
     }
 
+    /**
+     * Downloadable, on-device Kokoro speech. The model package is stored separately in
+     * app-owned storage; this setting retains only the user’s voice and rate preferences.
+     */
+    @Serializable
+    @SerialName("kokoro-local")
+    data class KokoroLocal(
+        override var id: Uuid = Uuid.random(),
+        override var name: String = "Kokoro Local",
+        val voiceId: String = "af_heart",
+        val speechRate: Float = 1.0f,
+        val packageId: String = "kokoro-multi-lang-v1_0",
+        val modelVersion: String = "1.0",
+    ) : TTSProviderSetting() {
+        override fun copyProvider(
+            id: Uuid,
+            name: String,
+        ): TTSProviderSetting = copy(id = id, name = name)
+    }
+
     @Serializable
     @SerialName("minimax")
     data class MiniMax(
@@ -288,6 +308,7 @@ sealed class TTSProviderSetting {
                 OpenAI::class,
                 Gemini::class,
                 SystemTTS::class,
+                KokoroLocal::class,
                 MiniMax::class,
                 Qwen::class,
                 Groq::class,

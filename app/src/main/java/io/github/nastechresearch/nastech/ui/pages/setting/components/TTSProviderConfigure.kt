@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -17,6 +19,10 @@ import io.github.nastechresearch.nastech.ui.components.ui.FormItem
 import io.github.nastechresearch.nastech.ui.components.ui.OutlinedNumberInput
 import io.github.nastechresearch.nastech.ui.components.ui.SelectTextField
 import me.rerere.tts.provider.TTSProviderSetting
+import me.rerere.tts.kokoro.KokoroModelPackage
+import me.rerere.tts.kokoro.KokoroPackageManager
+import me.rerere.tts.kokoro.KokoroPackageState
+import org.koin.compose.koinInject
 
 @Composable
 fun TTSProviderConfigure(
@@ -40,6 +46,7 @@ fun TTSProviderConfigure(
                     is TTSProviderSetting.OpenAI -> "OpenAI"
                     is TTSProviderSetting.Gemini -> "Gemini"
                     is TTSProviderSetting.SystemTTS -> "System TTS"
+                    is TTSProviderSetting.KokoroLocal -> "Kokoro Local"
                     is TTSProviderSetting.MiniMax -> "MiniMax"
                     is TTSProviderSetting.Qwen -> "Qwen"
                     is TTSProviderSetting.Groq -> "Groq"
@@ -57,6 +64,7 @@ fun TTSProviderConfigure(
                         TTSProviderSetting.OpenAI::class -> "OpenAI"
                         TTSProviderSetting.Gemini::class -> "Gemini"
                         TTSProviderSetting.SystemTTS::class -> "System TTS"
+                        TTSProviderSetting.KokoroLocal::class -> "Kokoro Local"
                         TTSProviderSetting.MiniMax::class -> "MiniMax"
                         TTSProviderSetting.Qwen::class -> "Qwen"
                         TTSProviderSetting.Groq::class -> "Groq"
@@ -83,6 +91,11 @@ fun TTSProviderConfigure(
                         TTSProviderSetting.SystemTTS::class -> TTSProviderSetting.SystemTTS(
                             id = setting.id,
                             name = "System TTS"
+                        )
+
+                        TTSProviderSetting.KokoroLocal::class -> TTSProviderSetting.KokoroLocal(
+                            id = setting.id,
+                            name = "Kokoro Local"
                         )
 
                         TTSProviderSetting.MiniMax::class -> TTSProviderSetting.MiniMax(
@@ -153,6 +166,7 @@ fun TTSProviderConfigure(
             is TTSProviderSetting.Gemini -> GeminiTTSConfiguration(setting, onValueChange)
             is TTSProviderSetting.MiniMax -> MiniMaxTTSConfiguration(setting, onValueChange)
             is TTSProviderSetting.SystemTTS -> SystemTTSConfiguration(setting, onValueChange)
+            is TTSProviderSetting.KokoroLocal -> KokoroLocalConfiguration(setting, onValueChange)
             is TTSProviderSetting.Qwen -> QwenTTSConfiguration(setting, onValueChange)
             is TTSProviderSetting.Groq -> GroqTTSConfiguration(setting, onValueChange)
             is TTSProviderSetting.XAI -> XAITTSConfiguration(setting, onValueChange)
@@ -465,6 +479,92 @@ private fun GeminiTTSConfiguration(
             placeholder = { Text(stringResource(R.string.setting_tts_page_voice_name_placeholder)) }
         )
     }
+}
+
+@Composable
+private fun KokoroLocalConfiguration(
+    setting: TTSProviderSetting.KokoroLocal,
+    onValueChange: (TTSProviderSetting) -> Unit,
+) {
+    val packageManager = koinInject<KokoroPackageManager>()
+    val packageState by packageManager.state.collectAsStateWithLifecycle()
+
+    FormItem(
+        label = { Text("Local voice package") },
+        description = {
+            Text(
+                when (val current = packageState) {
+                    KokoroPackageState.NotDownloaded -> "Download the verified 333 MB multi-voice Kokoro package for on-device speech."
+                    is KokoroPackageState.Downloading -> {
+                        val percent = if (current.totalBytes > 0L) {
+                            (current.downloadedBytes * 100 / current.totalBytes).coerceIn(0, 100)
+                        } else 0
+                        "Downloading local voices: $percent%"
+                    }
+                    KokoroPackageState.Verifying -> "Verifying archive integrity before enabling local speech."
+                    is KokoroPackageState.Ready -> "Verified on-device package · ${formatStorageSize(current.installedBytes)} · ${KokoroModelPackage.LICENSE}"
+                    is KokoroPackageState.Error -> current.message
+                },
+            )
+        },
+    ) {
+        FilledTonalButton(
+            onClick = {
+                when (packageState) {
+                    KokoroPackageState.NotDownloaded,
+                    is KokoroPackageState.Error -> packageManager.download()
+                    is KokoroPackageState.Downloading,
+                    KokoroPackageState.Verifying -> packageManager.cancelDownload()
+                    is KokoroPackageState.Ready -> packageManager.remove()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                when (packageState) {
+                    KokoroPackageState.NotDownloaded -> "Download local voices"
+                    is KokoroPackageState.Error -> "Retry download"
+                    is KokoroPackageState.Downloading -> "Cancel download"
+                    KokoroPackageState.Verifying -> "Cancel verification"
+                    is KokoroPackageState.Ready -> "Remove local package"
+                },
+            )
+        }
+    }
+
+    FormItem(
+        label = { Text("Kokoro voice") },
+        description = { Text("Select a named voice supplied by the verified local package.") },
+    ) {
+        SelectTextField(
+            value = KokoroModelPackage.voices.firstOrNull { it.id == setting.voiceId }?.label
+                ?: setting.voiceId,
+            options = KokoroModelPackage.voices,
+            readOnly = true,
+            modifier = Modifier.fillMaxWidth(),
+            optionToString = { it.label },
+            onOptionSelected = { voice -> onValueChange(setting.copy(voiceId = voice.id)) },
+        )
+    }
+
+    FormItem(
+        label = { Text("Speech rate") },
+        description = { Text("0.5 to 2.0. This rate is applied directly by the local speech model.") },
+    ) {
+        OutlinedNumberInput(
+            value = setting.speechRate,
+            onValueChange = { rate ->
+                if (rate in 0.5f..2.0f) onValueChange(setting.copy(speechRate = rate))
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = "Speech rate",
+        )
+    }
+}
+
+private fun formatStorageSize(bytes: Long): String = when {
+    bytes >= 1024L * 1024L * 1024L -> "%.1f GB".format(bytes / (1024.0 * 1024.0 * 1024.0))
+    else -> "%.0f MB".format(bytes / (1024.0 * 1024.0))
 }
 
 @Composable

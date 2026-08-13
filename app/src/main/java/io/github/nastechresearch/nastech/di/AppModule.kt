@@ -121,6 +121,13 @@ val appModule = module {
         )
     }
 
+    // Shared repository-directory importer for explicit skill installation and refresh.
+    single {
+        io.github.nastechresearch.nastech.skills.GitHubSkillImporter(
+            skillManager = get<io.github.nastechresearch.nastech.data.files.SkillManager>(),
+        )
+    }
+
     // Phase 19B: Skill isolation tester. Eager construction is safe here — ChatService
     // doesn't reach back into SkillTestRunner anywhere, so no DI cycle.
     single {
@@ -218,7 +225,11 @@ val appModule = module {
     }
 
     single {
-        TTSManager(get())
+        me.rerere.tts.kokoro.KokoroPackageManager(get())
+    }
+
+    single {
+        TTSManager(get(), get())
     }
 
     single {

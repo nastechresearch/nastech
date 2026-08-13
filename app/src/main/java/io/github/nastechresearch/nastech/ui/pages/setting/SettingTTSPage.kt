@@ -368,6 +368,7 @@ private fun TTSProviderItem(
                             is TTSProviderSetting.Gemini -> stringResource(R.string.setting_tts_page_provider_gemini)
                             is TTSProviderSetting.MiniMax -> "MiniMax"
                             is TTSProviderSetting.SystemTTS -> stringResource(R.string.setting_tts_page_provider_system)
+                            is TTSProviderSetting.KokoroLocal -> "Kokoro Local"
                             is TTSProviderSetting.Qwen -> "Qwen"
                             is TTSProviderSetting.Groq -> "Groq"
                             is TTSProviderSetting.XAI -> "xAI"

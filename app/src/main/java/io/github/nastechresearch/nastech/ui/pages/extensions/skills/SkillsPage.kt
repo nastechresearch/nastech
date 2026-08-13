@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -49,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.font.FontWeight
@@ -71,6 +73,8 @@ import io.github.nastechresearch.nastech.ui.components.ui.RikkaConfirmDialog
 import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.ui.theme.GlassSurface
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.plus
 import org.koin.androidx.compose.koinViewModel
 
@@ -121,7 +125,7 @@ fun SkillsPage() {
             }
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = CustomColors.topBarColors.containerColor,
+        containerColor = Color.Transparent,
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -245,9 +249,16 @@ fun SkillsPage() {
 
     if (showCatalog) {
         val installedNames by vm.installedSkillNames.collectAsStateWithLifecycle()
+        val catalog by vm.catalog.collectAsStateWithLifecycle()
         FeaturedCatalogSheet(
-            entries = vm.catalog.skills,
+            entries = catalog.skills,
             installedNames = installedNames,
+            onRefresh = { onDone ->
+                vm.refreshCatalog { success, message ->
+                    toaster.show(if (success) message else "Catalogue refresh failed: $message")
+                    onDone()
+                }
+            },
             onInstall = { entry, onDone ->
                 vm.installFromCatalog(entry) { success, message ->
                     if (success) {
@@ -269,14 +280,17 @@ fun SkillsPage() {
 private fun FeaturedCatalogSheet(
     entries: List<CatalogEntry>,
     installedNames: Set<String>,
+    onRefresh: (onResult: () -> Unit) -> Unit,
     onInstall: (CatalogEntry, onResult: () -> Unit) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var installing by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var refreshing by remember { mutableStateOf(false) }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        containerColor = glassSurface(GlassSurface.BOTTOM_SHEET, MaterialTheme.colorScheme.surfaceContainer).container,
     ) {
         Column(
             modifier = Modifier
@@ -291,6 +305,15 @@ private fun FeaturedCatalogSheet(
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                 )
+                TextButton(
+                    enabled = !refreshing,
+                    onClick = {
+                        refreshing = true
+                        onRefresh { refreshing = false }
+                    },
+                ) {
+                    Text(if (refreshing) "Refreshing…" else "Refresh sources")
+                }
                 IconButton(onClick = onDismiss) {
                     Icon(Lucide.X, contentDescription = stringResource(R.string.cancel))
                 }
@@ -334,7 +357,9 @@ private fun CatalogRow(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CustomColors.cardColorsOnSurfaceContainer,
+        colors = CardDefaults.cardColors(
+            containerColor = glassSurface(GlassSurface.CARD, MaterialTheme.colorScheme.surfaceContainer).container,
+        ),
     ) {
         Column(
             modifier = Modifier
@@ -387,7 +412,9 @@ private fun SkillCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = CustomColors.cardColorsOnSurfaceContainer,
+        colors = CardDefaults.cardColors(
+            containerColor = glassSurface(GlassSurface.CARD, MaterialTheme.colorScheme.surfaceContainer).container,
+        ),
     ) {
         Row(
             modifier = Modifier

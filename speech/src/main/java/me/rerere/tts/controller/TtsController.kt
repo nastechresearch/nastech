@@ -108,6 +108,10 @@ class TtsController(
     private val _totalChunks = MutableStateFlow(0)
     val totalChunks: StateFlow<Int> = _totalChunks.asStateFlow()
 
+    /** Text for the chunk currently being synthesized or played, for reader presentation. */
+    private val _activeChunkText = MutableStateFlow("")
+    val activeChunkText: StateFlow<String> = _activeChunkText.asStateFlow()
+
     // 统一播放状态（融合音频播放 + 分片进度）
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
@@ -191,6 +195,7 @@ class TtsController(
         _isSpeaking.update { false }
         _currentChunk.update { 0 }
         _totalChunks.update { 0 }
+        _activeChunkText.update { "" }
         _error.update { null }
         _playbackState.update { PlaybackState(status = PlaybackStatus.Idle) }
     }
@@ -271,6 +276,7 @@ class TtsController(
                     }
 
                     val chunk = queue.poll() ?: break
+                    _activeChunkText.update { chunk.text }
 
                     // 更新状态（1-based）
                     _currentChunk.update { processedCount + 1 }
@@ -316,6 +322,7 @@ class TtsController(
             } finally {
                 _isSpeaking.update { false }
                 if (queue.isEmpty()) {
+                    _activeChunkText.update { "" }
                     _playbackState.update { it.copy(status = PlaybackStatus.Ended) }
                 }
             }

@@ -11,11 +11,17 @@ import kotlinx.coroutines.withContext
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.data.files.SkillFrontmatterParser
 import io.github.nastechresearch.nastech.data.files.SkillManager
+import io.github.nastechresearch.nastech.skills.GitHubSkillImporter
 import java.io.File
 
 data class SkillFile(
     val file: File,
     val relativePath: String,
+)
+
+data class SkillSourceMetadata(
+    val sourceUrl: String,
+    val lastUpdatedMillis: Long,
 )
 
 sealed class SkillFileNode {
@@ -30,10 +36,14 @@ sealed class SkillFileNode {
 class SkillDetailVM(
     private val context: Context,
     private val skillManager: SkillManager,
+    private val gitHubImporter: GitHubSkillImporter,
 ) : ViewModel() {
 
     private val _tree = MutableStateFlow<List<SkillFileNode>>(emptyList())
     val tree = _tree.asStateFlow()
+
+    private val _source = MutableStateFlow<SkillSourceMetadata?>(null)
+    val source = _source.asStateFlow()
 
     private var skillName = ""
 
@@ -45,8 +55,25 @@ class SkillDetailVM(
 
     fun loadFiles() {
         viewModelScope.launch(Dispatchers.IO) {
-            val dir = skillManager.getSkillDir(skillName) ?: return@launch
+            val dir = skillManager.getSkillDir(skillName)
+            if (dir == null) {
+                _tree.value = emptyList()
+                _source.value = null
+                return@launch
+            }
             _tree.value = buildTree(dir, dir)
+            val skillFile = File(dir, "SKILL.md")
+            val sourceUrl = skillFile.takeIf { it.isFile }
+                ?.readText()
+                ?.let(SkillFrontmatterParser::parse)
+                ?.get("source-url")
+                ?.takeIf { it.startsWith("https://") }
+            _source.value = sourceUrl?.let {
+                SkillSourceMetadata(
+                    sourceUrl = it,
+                    lastUpdatedMillis = skillFile.lastModified(),
+                )
+            }
         }
     }
 
@@ -90,6 +117,38 @@ class SkillDetailVM(
             val success = skillManager.deleteSkillFile(skillName, skillFile.relativePath)
             if (success) loadFiles()
             withContext(Dispatchers.Main) { onResult(success) }
+        }
+    }
+
+    /**
+     * Explicitly refreshes a repository-installed skill. It never runs in the background and
+     * keeps the current skill name as a hard identity check before the shared importer swaps the
+     * directory atomically.
+     */
+    fun refreshFromSource(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val currentSource = _source.value
+            if (currentSource == null) {
+                withContext(Dispatchers.Main) {
+                    onResult(false, "This skill does not have a GitHub source to refresh")
+                }
+                return@launch
+            }
+            when (val result = gitHubImporter.importFromDirectory(
+                sourceUrl = currentSource.sourceUrl,
+                expectedSkillName = skillName,
+            )) {
+                is GitHubSkillImporter.Result.Ok -> {
+                    loadFiles()
+                    withContext(Dispatchers.Main) {
+                        onResult(true, "Updated from source")
+                    }
+                }
+
+                is GitHubSkillImporter.Result.Err -> withContext(Dispatchers.Main) {
+                    onResult(false, result.detail)
+                }
+            }
         }
     }
 }
