@@ -9,6 +9,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class GlassAppearance(
     val enabled: Boolean = true,
+    /** Black Silence is the single reusable surface system used across Nastech. */
+    val colorFamily: BlackSilenceColorFamily = BlackSilenceColorFamily.OBSIDIAN_NEON,
     val pureBlack: Boolean = true,
     val tintArgb: Long = 0xFF071A2D,
     val transparency: Float = 0.86f,
@@ -19,6 +21,10 @@ data class GlassAppearance(
     val saturation: Float = 1.03f,
     val backgroundBrightness: Float = 0.92f,
     val motionEnabled: Boolean = true,
+    /** Keeps feedback while removing ambient drift and repeating animation. */
+    val reducedMotion: Boolean = false,
+    /** Lets compatible voice and media surfaces use a restrained active glow. */
+    val soundReactive: Boolean = true,
     /** Contrast-safe AMOLED defaults; users can still override each foreground color. */
     val primaryTextArgb: Long? = 0xFFF5F9FF,
     val secondaryTextArgb: Long? = 0xFFB8D9FF,
@@ -29,6 +35,21 @@ data class GlassAppearance(
 ) {
     fun appearanceFor(surface: GlassSurface): GlassSurfaceAppearance =
         surfaceOverrides[surface]?.takeUnless { it.inheritGlobal } ?: GlassSurfaceAppearance()
+}
+
+@Serializable
+enum class BlackSilenceColorFamily(
+    val title: String,
+    val surfaceTintArgb: Long,
+    val accentArgb: Long,
+    val bloomPrimaryArgb: Long,
+    val bloomSecondaryArgb: Long,
+) {
+    OBSIDIAN_NEON("Obsidian Neon", 0xFF11101DL, 0xFF70E8FFL, 0xFF7C5CFFL, 0xFF00D4D4L),
+    SKY_BLUE("Sky Blue", 0xFF0B1728L, 0xFF70E8FFL, 0xFF35C5FFL, 0xFF4B7DFFL),
+    EMERALD("Emerald", 0xFF0B1B19L, 0xFF6EF0C0L, 0xFF31E8A5L, 0xFF008F6EL),
+    VIOLET("Violet", 0xFF181025L, 0xFFB79AFFL, 0xFF8A5CFFL, 0xFF6C44D9L),
+    SUNSET("Sunset", 0xFF211017L, 0xFFFFB878L, 0xFFFF8A65L, 0xFFFF4DB8L),
 }
 
 @Serializable

@@ -24,164 +24,119 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * A soft, animated glass-inspired canvas for chat surfaces.
- *
- * A low-contrast base gradient provides the frosted foundation while four independently moving
- * radial lights add depth without introducing hard edges or distracting color shifts. The effect
- * is deliberately implemented without a blur modifier so it remains smooth on the full Android
- * API range supported by Nastech.
+ * Black Silence is the shared atmospheric layer behind Nastech surfaces. It starts nearly black,
+ * uses only two diffused colour blooms from the selected family, and moves slowly enough that chat
+ * copy and controls remain the visual priority. Quiet mode freezes the blooms without removing
+ * the spatial depth users use to distinguish translucent panels from the canvas.
  */
 @Composable
 fun MeshGradientBackground(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
-    val transition = rememberInfiniteTransition(label = "glassAurora")
-
-    @Composable
-    fun phase(durationMillis: Int, loops: Int, label: String) = transition.animateFloat(
+    val transition = rememberInfiniteTransition(label = "blackSilenceAmbient")
+    val phaseOne by transition.animateFloat(
         initialValue = 0f,
-        targetValue = (2 * PI * loops).toFloat(),
-        animationSpec = infiniteRepeatable(tween(durationMillis * loops, easing = LinearEasing)),
-        label = label,
+        targetValue = (2 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(52_000, easing = LinearEasing)),
+        label = "blackSilencePrimaryBloom",
     )
-
-    // Independent cycles prevent visible repetition while keeping movement deliberately calm.
-    val p1 by phase(5_500, loops = 20, "blue")
-    val p2 by phase(7_000, loops = 1, "mint")
-    val p3 by phase(8_500, loops = 10, "lavender")
-    val p4 by phase(6_200, loops = 10, "rose")
+    val phaseTwo by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(68_000, easing = LinearEasing)),
+        label = "blackSilenceSecondaryBloom",
+    )
 
     val dark = LocalDarkMode.current
     val glass = LocalGlassAppearance.current
-    val motionP1 = if (glass.motionEnabled) p1 else 0f
-    val motionP2 = if (glass.motionEnabled) p2 else 0f
-    val motionP3 = if (glass.motionEnabled) p3 else 0f
-    val motionP4 = if (glass.motionEnabled) p4 else 0f
-    val tint = Color(glass.tintArgb)
+    val quiet = glass.reducedMotion || !glass.motionEnabled
+    val p1 = if (quiet) 0f else phaseOne
+    val p2 = if (quiet) 0f else phaseTwo
+    val family = glass.colorFamily
+    val customTint = Color(glass.tintArgb)
+
     fun tune(color: Color): Color {
-        val brightness = glass.backgroundBrightness.coerceIn(0f, 1f)
-        val saturation = glass.saturation.coerceIn(0f, 1f)
-        val brightnessAdjusted = Color(
+        val brightness = glass.backgroundBrightness.coerceIn(0.16f, 1f)
+        val saturation = glass.saturation.coerceIn(0f, 1.25f)
+        val dimmed = Color(
             red = color.red * brightness,
             green = color.green * brightness,
             blue = color.blue * brightness,
             alpha = color.alpha,
         )
-        val luminance = (brightnessAdjusted.red + brightnessAdjusted.green + brightnessAdjusted.blue) / 3f
-        val saturated = Color(
-            red = luminance + (brightnessAdjusted.red - luminance) * saturation,
-            green = luminance + (brightnessAdjusted.green - luminance) * saturation,
-            blue = luminance + (brightnessAdjusted.blue - luminance) * saturation,
-            alpha = brightnessAdjusted.alpha,
-        )
+        val luma = (dimmed.red + dimmed.green + dimmed.blue) / 3f
         return Color(
-            red = saturated.red * 0.90f + tint.red * 0.10f,
-            green = saturated.green * 0.90f + tint.green * 0.10f,
-            blue = saturated.blue * 0.90f + tint.blue * 0.10f,
-            alpha = saturated.alpha,
-        )
-    }
-    val baseGradient = if (dark) {
-        arrayOf(
-            0.0f to tune(Color(0xFF17233A)),
-            0.26f to tune(Color(0xFF101A2C)),
-            0.54f to tune(Color(0xFF0B1220)),
-            0.76f to tune(Color(0xFF080E19)),
-            1.0f to tune(Color(0xFF070B14)),
-        )
-    } else {
-        arrayOf(
-            0.0f to tune(Color(0xFFE7F1FF)),
-            0.24f to tune(Color(0xFFF0F6FF)),
-            0.52f to tune(Color(0xFFF8FBFF)),
-            0.76f to tune(Color(0xFFFCFDFF)),
-            1.0f to tune(Color(0xFFFFFFFF)),
+            red = (luma + (dimmed.red - luma) * saturation) * 0.92f + customTint.red * 0.08f,
+            green = (luma + (dimmed.green - luma) * saturation) * 0.92f + customTint.green * 0.08f,
+            blue = (luma + (dimmed.blue - luma) * saturation) * 0.92f + customTint.blue * 0.08f,
+            alpha = dimmed.alpha,
         )
     }
 
-    // Translucent cool lights preserve text contrast and read as light diffused through glass.
-    val blobBlue = tune(if (dark) Color(0xFF7BA9E8) else Color(0xFF88B7F2))
-    val blobMint = tune(if (dark) Color(0xFF62C9BE) else Color(0xFF94DED3))
-    val blobLavender = tune(if (dark) Color(0xFFA7B7F3) else Color(0xFFC5D2FF))
-    val blobRose = tune(if (dark) Color(0xFFD798B8) else Color(0xFFF2C2D6))
-    val alphaBlue = if (dark) 0.27f else 0.40f
-    val alphaMint = if (dark) 0.20f else 0.30f
-    val alphaLavender = if (dark) 0.20f else 0.28f
-    val alphaRose = if (dark) 0.14f else 0.20f
+    val base = if (dark) {
+        arrayOf(
+            0f to Color(0xFF05070B),
+            0.52f to Color(0xFF070A10),
+            1f to Color(0xFF030406),
+        )
+    } else {
+        arrayOf(
+            0f to Color(0xFFF4F8FC),
+            0.52f to Color(0xFFEEF3F8),
+            1f to Color(0xFFE8EEF4),
+        )
+    }
+    val primaryBloom = tune(Color(family.bloomPrimaryArgb))
+    val secondaryBloom = tune(Color(family.bloomSecondaryArgb))
+    val primaryAlpha = if (dark) 0.18f else 0.12f
+    val secondaryAlpha = if (dark) 0.12f else 0.09f
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(colorStops = baseGradient)),
+            .background(Brush.verticalGradient(colorStops = base)),
     ) {
         Canvas(Modifier.fillMaxSize()) {
             val width = size.width
             val height = size.height
             val radius = maxOf(width, height)
-
-            drawBlob(
+            drawBloom(
                 center = Offset(
-                    width * 0.48f + sin(motionP1) * width * 0.35f,
-                    height * 0.07f + cos(motionP1 * 1.15f) * height * 0.17f,
+                    width * 0.86f + sin(p1) * width * 0.06f,
+                    height * 0.10f + cos(p1 * 0.65f) * height * 0.04f,
                 ),
-                radius = radius * 0.42f,
-                color = blobBlue,
-                centerAlpha = alphaBlue,
+                radius = radius * 0.67f,
+                color = primaryBloom,
+                alpha = primaryAlpha,
             )
-            drawBlob(
+            drawBloom(
                 center = Offset(
-                    width * 0.17f + sin(motionP2 + PI.toFloat() * 0.55f) * width * 0.28f,
-                    height * 0.25f + cos(motionP2) * height * 0.18f,
+                    width * 0.22f + cos(p2) * width * 0.05f,
+                    height * 0.87f + sin(p2 * 0.72f) * height * 0.04f,
                 ),
-                radius = radius * 0.33f,
-                color = blobMint,
-                centerAlpha = alphaMint,
+                radius = radius * 0.62f,
+                color = secondaryBloom,
+                alpha = secondaryAlpha,
             )
-            drawBlob(
-                center = Offset(
-                    width * 0.84f + sin(motionP3 + PI.toFloat() * 0.9f) * width * -0.31f,
-                    height * 0.13f + cos(motionP3 * 0.9f) * height * 0.17f,
-                ),
-                radius = radius * 0.35f,
-                color = blobLavender,
-                centerAlpha = alphaLavender,
-            )
-            drawBlob(
-                center = Offset(
-                    width * 0.60f + sin(motionP4 + PI.toFloat() * 1.25f) * width * 0.26f,
-                    height * 0.36f + cos(motionP4 * 1.1f) * height * 0.15f,
-                ),
-                radius = radius * 0.29f,
-                color = blobRose,
-                centerAlpha = alphaRose,
-            )
-
-            // A translucent wash visually integrates the moving lights behind foreground cards.
             drawRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = if (dark) 0.025f else 0.13f),
+                        Color.White.copy(alpha = if (dark) 0.018f else 0.08f),
                         Color.Transparent,
-                        Color.White.copy(alpha = if (dark) 0.01f else 0.05f),
+                        Color.Black.copy(alpha = if (dark) 0.12f else 0.02f),
                     ),
                 ),
             )
         }
-
         content()
     }
 }
 
-private fun DrawScope.drawBlob(
-    center: Offset,
-    radius: Float,
-    color: Color,
-    centerAlpha: Float = 0.75f,
-) {
+private fun DrawScope.drawBloom(center: Offset, radius: Float, color: Color, alpha: Float) {
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(color.copy(alpha = centerAlpha), Color.Transparent),
+            colors = listOf(color.copy(alpha = alpha), Color.Transparent),
             center = center,
             radius = radius,
         ),

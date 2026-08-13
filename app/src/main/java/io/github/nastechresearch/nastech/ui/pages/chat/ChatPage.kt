@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -77,6 +79,7 @@ import io.github.nastechresearch.nastech.ui.components.ai.ChatInput
 import io.github.nastechresearch.nastech.ui.components.ai.FilesPicker
 import io.github.nastechresearch.nastech.ui.components.ai.completion.WorkspaceCompletionProvider
 import io.github.nastechresearch.nastech.ui.components.ai.useCropLauncher
+import io.github.nastechresearch.nastech.ui.components.ui.UpdateCard
 import io.github.nastechresearch.nastech.ui.components.ui.permission.PermissionCamera
 import io.github.nastechresearch.nastech.ui.components.ui.permission.PermissionManager
 import io.github.nastechresearch.nastech.ui.components.ui.permission.rememberPermissionState
@@ -417,7 +420,8 @@ private fun ChatPageContent(
             },
             containerColor = Color.Transparent,
         ) { innerPadding ->
-            ChatList(
+            Box(modifier = Modifier.fillMaxSize()) {
+                ChatList(
                 innerPadding = innerPadding,
                 conversation = conversation,
                 state = chatListState,
@@ -487,11 +491,21 @@ private fun ChatPageContent(
                 onToggleFavorite = { node ->
                     vm.toggleMessageFavorite(node)
                 },
-                onConversationSystemPromptChange = { newPrompt ->
-                    vm.updateConversation(conversation.copy(customSystemPrompt = newPrompt))
-                    vm.saveConversationAsync()
-                },
-            )
+                    onConversationSystemPromptChange = { newPrompt ->
+                        vm.updateConversation(conversation.copy(customSystemPrompt = newPrompt))
+                        vm.saveConversationAsync()
+                    },
+                )
+                if (setting.displaySetting.showUpdates) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = innerPadding.calculateTopPadding() + 8.dp, start = 12.dp, end = 12.dp),
+                    ) {
+                        UpdateCard(vm = vm, compact = true)
+                    }
+                }
+            }
         }
 
         if (showFilesSheet) {

@@ -28,13 +28,6 @@ fun navigateToChatPage(
     )
 }
 
-fun navigateToVoiceCall(
-    navigator: Navigator,
-    chatId: Uuid = Uuid.random(),
-) {
-    navigator.clearAndNavigate(Screen.VoiceCall(id = chatId.toString()))
-}
-
 fun Context.copyMessageToClipboard(message: UIMessage) {
     this.writeClipboardText(message.toText())
 }

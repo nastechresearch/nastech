@@ -82,7 +82,6 @@ import io.github.nastechresearch.nastech.ui.components.ui.BackupReminderCard
 import io.github.nastechresearch.nastech.ui.components.ui.Greeting
 import io.github.nastechresearch.nastech.ui.components.ui.Tooltip
 import io.github.nastechresearch.nastech.ui.components.ui.UIAvatar
-import io.github.nastechresearch.nastech.ui.components.ui.UpdateCard
 import androidx.compose.ui.draw.clip
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.theme.glassContentColor
@@ -185,10 +184,6 @@ fun ChatDrawerContent(
             modifier = Modifier.padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (settings.displaySetting.showUpdates && !isPlayStore) {
-                UpdateCard(vm)
-            }
-
             BackupReminderCard(
                 settings = settings,
                 onClick = { navController.navigate(Screen.Backup) },

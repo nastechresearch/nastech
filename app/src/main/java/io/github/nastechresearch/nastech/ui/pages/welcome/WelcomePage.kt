@@ -148,7 +148,7 @@ private fun WelcomeConnectVisual() {
     WelcomeIllustration(R.drawable.nastech_onboarding_agent)
     WelcomeCard(
         title = "Connect capabilities deliberately",
-        body = "Voice Call, skills, workspaces, model providers, browser tasks, and sub-agents are optional. Configure them from Nastech Settings when you are ready.",
+        body = "Speech input, the docked reader, skills, workspaces, model providers, browser tasks, and sub-agents are optional. Configure them from Nastech Settings when you are ready.",
     )
     Card(colors = CustomColors.cardColors, modifier = Modifier.fillMaxWidth()) {
         Row(

@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updated_at": "2026-05-07",
+  "version": 2,
+  "updated_at": "2026-08-13",
   "skills": [
     {
       "name": "auto-reply",
@@ -121,6 +121,136 @@
       "size_kb": 7884,
       "compatibility": "js",
       "is_bundled": true
+    },
+    {
+      "name": "mermaid-diagrams",
+      "title": "Mermaid Diagrams",
+      "description": "Create readable flowcharts, sequence diagrams, system maps, and architecture graphs that render in Nastech chat.",
+      "category": "visualization",
+      "license": "MIT",
+      "size_kb": 18,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/mermaid-diagrams/SKILL.md"
+    },
+    {
+      "name": "c4-architecture",
+      "title": "C4 Architecture",
+      "description": "Create software system, container, component, and deployment architecture diagrams with clear levels of detail.",
+      "category": "coding",
+      "license": "MIT",
+      "size_kb": 16,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/c4-architecture/SKILL.md"
+    },
+    {
+      "name": "database-schema-designer",
+      "title": "Database Schema Designer",
+      "description": "Design robust data models, relationships, constraints, and migration-ready schemas for application projects.",
+      "category": "coding",
+      "license": "MIT",
+      "size_kb": 14,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/database-schema-designer/SKILL.md"
+    },
+    {
+      "name": "qa-test-planner",
+      "title": "QA Test Planner",
+      "description": "Turn requirements into structured test coverage, risk areas, regression plans, and validation checklists.",
+      "category": "testing",
+      "license": "MIT",
+      "size_kb": 14,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/qa-test-planner/SKILL.md"
+    },
+    {
+      "name": "dependency-updater",
+      "title": "Dependency Updater",
+      "description": "Plan dependency upgrades, assess compatibility risks, and prepare validation steps without changing packages automatically.",
+      "category": "coding",
+      "license": "MIT",
+      "size_kb": 12,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/dependency-updater/SKILL.md"
+    },
+    {
+      "name": "commit-work",
+      "title": "Commit Work",
+      "description": "Prepare small, reviewable source-control commits with clear messages, staged-change checks, and validation context.",
+      "category": "development",
+      "license": "MIT",
+      "size_kb": 10,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/commit-work/SKILL.md"
+    },
+    {
+      "name": "crafting-effective-readmes",
+      "title": "Crafting Effective READMEs",
+      "description": "Create maintainable project documentation with installation, usage, architecture, and contribution guidance.",
+      "category": "documentation",
+      "license": "MIT",
+      "size_kb": 12,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/crafting-effective-readmes/SKILL.md"
+    },
+    {
+      "name": "backend-to-frontend-handoff-docs",
+      "title": "Backend-to-Frontend Handoff",
+      "description": "Document API contracts, response shapes, errors, and integration expectations for implementation teams.",
+      "category": "documentation",
+      "license": "MIT",
+      "size_kb": 14,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/backend-to-frontend-handoff-docs/SKILL.md"
+    },
+    {
+      "name": "requirements-clarity",
+      "title": "Requirements Clarity",
+      "description": "Turn ambiguous requests into a focused implementation scope, assumptions, acceptance criteria, and open questions.",
+      "category": "planning",
+      "license": "MIT",
+      "size_kb": 11,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/requirements-clarity/SKILL.md"
+    },
+    {
+      "name": "design-system-starter",
+      "title": "Design System Starter",
+      "description": "Define a consistent visual system for spacing, color, typography, components, states, and accessibility.",
+      "category": "design",
+      "license": "MIT",
+      "size_kb": 13,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/design-system-starter/SKILL.md"
+    },
+    {
+      "name": "openapi-to-typescript",
+      "title": "OpenAPI to TypeScript",
+      "description": "Translate API specifications into typed client models, contract checks, and implementation guidance.",
+      "category": "coding",
+      "license": "MIT",
+      "size_kb": 12,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/openapi-to-typescript/SKILL.md"
+    },
+    {
+      "name": "react-dev",
+      "title": "React Development",
+      "description": "Apply type-safe React and TypeScript implementation patterns, state boundaries, and component design guidance.",
+      "category": "coding",
+      "license": "MIT",
+      "size_kb": 15,
+      "compatibility": "prompt",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/react-dev/SKILL.md"
+    },
+    {
+      "name": "web-to-markdown",
+      "title": "Web to Markdown",
+      "description": "Convert a public web page into structured Markdown for research, note taking, and later conversation context.",
+      "category": "research",
+      "license": "MIT",
+      "size_kb": 10,
+      "compatibility": "network",
+      "source_url": "https://raw.githubusercontent.com/softaworks/agent-toolkit/main/skills/web-to-markdown/SKILL.md"
     }
   ]
 }

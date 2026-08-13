@@ -32,6 +32,9 @@ val LocalExtendColors = compositionLocalOf { ExtendLightColors }
 val LocalDarkMode = compositionLocalOf { false }
 
 private val AMOLED_DARK_BACKGROUND = Color(0xFF000000)
+private val BLACK_SILENCE_SURFACE = Color(0xFF080C12)
+private val BLACK_SILENCE_SURFACE_LOW = Color(0xFF0B1018)
+private val BLACK_SILENCE_SURFACE_HIGH = Color(0xFF101722)
 private val AMOLED_TEXT = Color(0xFFF5F9FF)
 private val AMOLED_SECONDARY_TEXT = Color(0xFFB8D9FF)
 private val AMOLED_LIGHT_BLUE = Color(0xFF76B8FF)
@@ -73,13 +76,13 @@ fun NastechTheme(
         if (darkTheme && amoledDarkMode) {
             colorScheme.copy(
                 background = AMOLED_DARK_BACKGROUND,
-                surface = AMOLED_DARK_BACKGROUND,
-                surfaceVariant = AMOLED_DARK_BACKGROUND,
-                surfaceContainerLowest = AMOLED_DARK_BACKGROUND,
-                surfaceContainerLow = AMOLED_DARK_BACKGROUND,
-                surfaceContainer = AMOLED_DARK_BACKGROUND,
-                surfaceContainerHigh = AMOLED_DARK_BACKGROUND,
-                surfaceContainerHighest = AMOLED_DARK_BACKGROUND,
+                surface = BLACK_SILENCE_SURFACE,
+                surfaceVariant = BLACK_SILENCE_SURFACE_LOW,
+                surfaceContainerLowest = Color(0xFF05070B),
+                surfaceContainerLow = BLACK_SILENCE_SURFACE,
+                surfaceContainer = BLACK_SILENCE_SURFACE_LOW,
+                surfaceContainerHigh = BLACK_SILENCE_SURFACE_HIGH,
+                surfaceContainerHighest = Color(0xFF162131),
                 primary = AMOLED_LIGHT_BLUE,
                 onPrimary = AMOLED_DARK_BACKGROUND,
                 primaryContainer = Color(0xFF0B3157),
@@ -104,7 +107,8 @@ fun NastechTheme(
     val extendColors = if (darkTheme) ExtendDarkColors else ExtendLightColors
     val appearanceColorScheme = remember(colorSchemeConverted, settings.glassAppearance) {
         val appearance = settings.glassAppearance
-        val visibleSurface = if (appearance.pureBlack) Color.Black else Color(appearance.tintArgb)
+        // The canvas may be pure black, while each panel uses the selected near-black family tint.
+        val visibleSurface = Color(appearance.tintArgb)
         val primaryText = contrastSafeForeground(
             requested = appearance.primaryTextArgb?.let(::Color),
             background = visibleSurface,
@@ -119,8 +123,8 @@ fun NastechTheme(
         val accent = appearance.accentArgb?.let(::Color)
         colorSchemeConverted.copy(
             primary = accent ?: colorSchemeConverted.primary,
-            secondary = colorSchemeConverted.secondary,
-            tertiary = colorSchemeConverted.tertiary,
+            secondary = accent?.copy(alpha = 0.86f) ?: colorSchemeConverted.secondary,
+            tertiary = accent?.copy(alpha = 0.72f) ?: colorSchemeConverted.tertiary,
             onBackground = contrastSafeForeground(primaryText, colorSchemeConverted.background, colorSchemeConverted.onBackground),
             onSurface = primaryText,
             onSurfaceVariant = secondaryText,

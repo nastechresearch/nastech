@@ -52,7 +52,7 @@ import kotlin.time.toJavaInstant
 
 @OptIn(ExperimentalTime::class)
 @Composable
-fun UpdateCard(vm: ChatVM) {
+fun UpdateCard(vm: ChatVM, compact: Boolean = false) {
     val state by vm.updateState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val toaster = LocalToaster.current
@@ -113,19 +113,31 @@ fun UpdateCard(vm: ChatVM) {
                             )
                         }
                     }
-                    MarkdownBlock(
-                        content = info.changelog,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.heightIn(max = 200.dp)
-                    )
+                    if (compact) {
+                        Text(
+                            text = "Tap to review release notes and download the signed update.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        MarkdownBlock(
+                            content = info.changelog,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.heightIn(max = 200.dp),
+                        )
+                    }
                 }
             }
         }
         if (showDetail) {
             val downloadHandler = useThrottle<UpdateDownload>(500) { item ->
-                vm.updateChecker.downloadUpdate(context, item)
+                val queued = vm.updateChecker.downloadUpdate(context, item)
                 showDetail = false
-                toaster.show(context.getString(R.string.update_card_downloading), type = ToastType.Info)
+                toaster.show(
+                    if (queued) "Update downloading. Nastech will show Install when Android has the signed APK ready."
+                    else "Unable to start the update download. Please try again.",
+                    type = if (queued) ToastType.Info else ToastType.Error,
+                )
             }
             ModalBottomSheet(
                 onDismissRequest = { showDetail = false },
@@ -165,12 +177,12 @@ fun UpdateCard(vm: ChatVM) {
                             ListItem(
                                 headlineContent = {
                                     Text(
-                                        text = downloadItem.name,
+                                        text = "Download ${downloadItem.name}",
                                     )
                                 },
                                 supportingContent = {
                                     Text(
-                                        text = downloadItem.size
+                                        text = "${downloadItem.size} · Android will ask you to confirm installation"
                                     )
                                 },
                                 leadingContent = {

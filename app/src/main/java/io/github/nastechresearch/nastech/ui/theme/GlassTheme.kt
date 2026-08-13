@@ -36,9 +36,12 @@ fun glassSurface(surface: GlassSurface, fallback: Color): ResolvedGlassSurface {
     }
 
     val override = appearance.surfaceOverrides[surface]?.takeUnless { it.inheritGlobal }
-    val tint = override?.tintArgb?.let(::Color)
-        ?: if (appearance.pureBlack) Color.Black else Color(appearance.tintArgb)
-    val opacity = (override?.transparency ?: appearance.transparency).coerceIn(0.08f, 0.98f)
+    // A pure-black setting defines the deep canvas; panels retain their selected near-black tint
+    // so they can read as light floating above glass instead of heavy opaque cards.
+    val tint = override?.tintArgb?.let(::Color) ?: Color(appearance.tintArgb)
+    val requestedOpacity = (override?.transparency ?: appearance.transparency).coerceIn(0.08f, 0.98f)
+    // Compress the visual range slightly: both low and high slider values remain visibly glassy.
+    val opacity = (0.08f + requestedOpacity * 0.72f).coerceIn(0.14f, 0.82f)
     val borderOpacity = (override?.borderOpacity ?: appearance.borderOpacity).coerceIn(0f, 1f)
     val highlightOpacity = (override?.highlightOpacity ?: appearance.highlightOpacity).coerceIn(0f, 1f)
     val blurEnabled = override?.blurEnabled ?: appearance.blurEnabled
@@ -47,8 +50,8 @@ fun glassSurface(surface: GlassSurface, fallback: Color): ResolvedGlassSurface {
     return ResolvedGlassSurface(
         enabled = true,
         container = tint.copy(alpha = opacity),
-        border = Color.White.copy(alpha = borderOpacity),
-        highlight = Color.White.copy(alpha = highlightOpacity),
+        border = Color.White.copy(alpha = borderOpacity * 0.72f),
+        highlight = Color.White.copy(alpha = highlightOpacity * 0.64f),
         blurEnabled = blurEnabled,
         blurIntensity = blurIntensity,
     )

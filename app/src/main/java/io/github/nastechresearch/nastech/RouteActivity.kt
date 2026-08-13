@@ -18,6 +18,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.blur
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,11 +67,14 @@ import io.github.nastechresearch.nastech.data.db.MigrationState
 import io.github.nastechresearch.nastech.data.event.AppEvent
 import io.github.nastechresearch.nastech.data.event.AppEventBus
 import io.github.nastechresearch.nastech.ui.activity.SafeModeActivity
+import io.github.nastechresearch.nastech.ui.components.ui.ScreenReaderOverlay
 import io.github.nastechresearch.nastech.ui.components.ui.TTSController
+import io.github.nastechresearch.nastech.ui.components.ui.rememberScreenReaderState
 import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.context.LocalASRState
 import io.github.nastechresearch.nastech.ui.context.LocalSettings
 import io.github.nastechresearch.nastech.ui.context.LocalSharedTransitionScope
+import io.github.nastechresearch.nastech.ui.context.LocalScreenReaderState
 import io.github.nastechresearch.nastech.ui.context.LocalTTSState
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.context.Navigator
@@ -119,7 +123,6 @@ import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesGene
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesUIPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingThemePage
 import io.github.nastechresearch.nastech.ui.pages.welcome.WelcomePage
-import io.github.nastechresearch.nastech.ui.pages.voice.VoiceCallPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingChatStoragePage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingFilesPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingMcpPage
@@ -272,6 +275,8 @@ class RouteActivity : ComponentActivity() {
         val toastState = rememberToasterState()
         val settings by settingsStore.settingsFlow.collectAsStateWithLifecycle()
         val tts = rememberCustomTtsState()
+        val screenReader = rememberScreenReaderState(tts)
+        val activeReaderRequest by screenReader.activeRequest.collectAsStateWithLifecycle()
         val asr = rememberCustomAsrState()
         val eventBus = koinInject<AppEventBus>()
         LaunchedEffect(tts) {
@@ -335,6 +340,7 @@ class RouteActivity : ComponentActivity() {
                 LocalSettings provides settings,
                 LocalToaster provides toastState,
                 LocalTTSState provides tts,
+                LocalScreenReaderState provides screenReader,
                 LocalASRState provides asr,
             ) {
                 Toaster(
@@ -357,7 +363,9 @@ class RouteActivity : ComponentActivity() {
                             rememberSaveableStateHolderNavEntryDecorator(),
                             rememberViewModelStoreNavEntryDecorator(),
                         ),
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(if (activeReaderRequest?.focus == true) Modifier.blur(18.dp) else Modifier),
                         onBack = { backStack.removeLastOrNull() },
                         transitionSpec = {
                             if (backStack.size == 1) fadeIn() togetherWith fadeOut()
@@ -392,13 +400,6 @@ class RouteActivity : ComponentActivity() {
                                     files = key.files.map { it.toUri() },
                                     nodeId = key.nodeId?.let { Uuid.parse(it) }
                                 )
-                            }
-
-                            entry<Screen.VoiceCall>(
-                                metadata = NavDisplay.transitionSpec { fadeIn() togetherWith fadeOut() }
-                                    + NavDisplay.popTransitionSpec { fadeIn() togetherWith fadeOut() }
-                            ) { key ->
-                                VoiceCallPage(id = Uuid.parse(key.id))
                             }
 
                             entry<Screen.Welcome> { key ->
@@ -712,7 +713,8 @@ class RouteActivity : ComponentActivity() {
                                 }
                             }
                         }
-                    }
+                    )
+                    ScreenReaderOverlay(state = screenReader)
                 }
             }
         }
@@ -731,11 +733,9 @@ sealed interface Screen : NavKey {
         val nodeId: String? = null
     ) : Screen
 
-    @Serializable
-    data class VoiceCall(val id: String) : Screen
-
-    @Serializable
+        @Serializable
     data class Welcome(val chatId: String) : Screen
+
 
     @Serializable
     data class ShareHandler(val text: String, val streamUri: String? = null) : Screen

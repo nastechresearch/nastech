@@ -3,6 +3,8 @@
   xmlns:tools="http://schemas.android.com/tools">
 
   <uses-permission android:name="android.permission.INTERNET" />
+  <!-- Allows Nastech to request Android's user-confirmed package installer for signed releases. -->
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
   <!-- Required for ConnectivityManager.registerNetworkCallback (NetworkChangeMonitor)
        which evicts the OkHttp connection pool on default-network changes. Fixes the
        post-Termux-interactive-session DNS bug where the JVM negative-cached a transient
@@ -199,6 +201,10 @@
         android:resource="@xml/shortcuts" />
     </activity>
     <activity
+      android:name=".ui.activity.UpdateInstallActivity"
+      android:exported="false"
+      android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+    <activity
       android:name=".ui.activity.ShortcutHandlerActivity"
       android:exported="true"
       android:theme="@android:style/Theme.Translucent.NoTitleBar">
@@ -360,6 +366,14 @@
         <action android:name="android.service.notification.NotificationListenerService" />
       </intent-filter>
     </service>
+
+    <receiver
+      android:name=".utils.UpdateDownloadCompleteReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+      </intent-filter>
+    </receiver>
 
     <receiver
       android:name=".service.CronBootReceiver"

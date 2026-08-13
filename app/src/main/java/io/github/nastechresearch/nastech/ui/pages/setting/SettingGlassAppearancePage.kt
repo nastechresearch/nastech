@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.nastechresearch.nastech.Screen
+import io.github.nastechresearch.nastech.data.datastore.BlackSilenceColorFamily
 import io.github.nastechresearch.nastech.data.datastore.GlassAppearance
 import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.datastore.GlassSurfaceAppearance
@@ -211,10 +212,13 @@ private fun GlobalGlassControls(profile: GlassAppearance, onUpdate: (GlassAppear
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            SettingSwitch("Enable glass appearance", profile.enabled) { onUpdate(profile.copy(enabled = it)) }
-            SettingSwitch("Pure Black Glass", profile.pureBlack) { onUpdate(profile.copy(pureBlack = it)) }
+            SettingSwitch("Enable Black Silence materials", profile.enabled) { onUpdate(profile.copy(enabled = it)) }
+            BlackSilenceFamilyPicker(profile = profile, onUpdate = onUpdate)
+            SettingSwitch("Pure black base", profile.pureBlack) { onUpdate(profile.copy(pureBlack = it)) }
             SettingSwitch("Blur where available", profile.blurEnabled) { onUpdate(profile.copy(blurEnabled = it)) }
-            SettingSwitch("Animated background light", profile.motionEnabled) { onUpdate(profile.copy(motionEnabled = it)) }
+            SettingSwitch("Ambient drift", profile.motionEnabled) { onUpdate(profile.copy(motionEnabled = it)) }
+            SettingSwitch("Quiet / reduced motion", profile.reducedMotion) { onUpdate(profile.copy(reducedMotion = it)) }
+            SettingSwitch("Sound-reactive glass", profile.soundReactive) { onUpdate(profile.copy(soundReactive = it)) }
             VisualColorPicker(
                 label = "Glass tint",
                 value = profile.tintArgb,
@@ -260,6 +264,64 @@ private fun GlobalGlassControls(profile: GlassAppearance, onUpdate: (GlassAppear
                 onReset = { onUpdate(profile.copy(accentArgb = null)) },
             )
             TextScaleSlider(profile.textScale) { onUpdate(profile.copy(textScale = it)) }
+        }
+    }
+}
+
+@Composable
+private fun BlackSilenceFamilyPicker(
+    profile: GlassAppearance,
+    onUpdate: (GlassAppearance) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Black Silence colour family", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "Every surface keeps the same quiet layout; the chosen family changes only the ambient bloom, active edge, and accent.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            items(BlackSilenceColorFamily.entries, key = { it.name }) { family ->
+                val selected = profile.colorFamily == family
+                Surface(
+                    onClick = {
+                        onUpdate(
+                            profile.copy(
+                                colorFamily = family,
+                                tintArgb = family.surfaceTintArgb,
+                                accentArgb = family.accentArgb,
+                            ),
+                        )
+                    },
+                    shape = MaterialTheme.shapes.medium,
+                    color = Color(family.surfaceTintArgb),
+                    border = androidx.compose.foundation.BorderStroke(
+                        if (selected) 2.dp else 1.dp,
+                        if (selected) Color(family.accentArgb) else MaterialTheme.colorScheme.outline.copy(alpha = 0.42f),
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .background(
+                                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                        listOf(Color(family.bloomPrimaryArgb), Color(family.bloomSecondaryArgb)),
+                                    ),
+                                ),
+                        )
+                        Text(
+                            family.title,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = readableOn(Color(family.surfaceTintArgb)),
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -543,11 +605,11 @@ private fun CustomHexColorField(value: Long, onValueChange: (Long) -> Unit) {
 private data class AppearanceColorPreset(val name: String, val argb: Long)
 
 private val GlassTintPresets = listOf(
-    AppearanceColorPreset("Onyx", 0xFF050505L),
-    AppearanceColorPreset("Midnight", 0xFF142C58L),
-    AppearanceColorPreset("Ocean", 0xFF0C4A6EL),
-    AppearanceColorPreset("Forest", 0xFF14532DL),
-    AppearanceColorPreset("Plum", 0xFF4C1D5EL),
+    AppearanceColorPreset("Obsidian", 0xFF11101DL),
+    AppearanceColorPreset("Sky", 0xFF0B1728L),
+    AppearanceColorPreset("Emerald", 0xFF0B1B19L),
+    AppearanceColorPreset("Violet", 0xFF181025L),
+    AppearanceColorPreset("Sunset", 0xFF211017L),
     AppearanceColorPreset("Frost", 0xFFE8F4FFL),
 )
 

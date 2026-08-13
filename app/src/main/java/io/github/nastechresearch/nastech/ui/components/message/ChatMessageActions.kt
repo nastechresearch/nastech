@@ -58,6 +58,7 @@ import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.data.model.MessageNode
 import io.github.nastechresearch.nastech.ui.components.ui.RikkaConfirmDialog
 import io.github.nastechresearch.nastech.ui.context.LocalSettings
+import io.github.nastechresearch.nastech.ui.context.LocalScreenReaderState
 import io.github.nastechresearch.nastech.ui.context.LocalTTSState
 import io.github.nastechresearch.nastech.utils.copyMessageToClipboard
 import io.github.nastechresearch.nastech.utils.extractQuotedContentAsText
@@ -125,6 +126,7 @@ fun ColumnScope.ChatMessageActionButtons(
 
         if (message.role == MessageRole.ASSISTANT) {
             val tts = LocalTTSState.current
+            val reader = LocalScreenReaderState.current
             val settings = LocalSettings.current
             val isSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
             val isAvailable by tts.isAvailable.collectAsStateWithLifecycle()
@@ -147,9 +149,13 @@ fun ColumnScope.ChatMessageActionButtons(
                                 if (settings.displaySetting.ttsOnlyReadOutsideBrackets) {
                                     textToSpeak = textToSpeak.removeBracketedContent() ?: textToSpeak
                                 }
-                                tts.speak(textToSpeak)
+                                reader.start(
+                                    title = "Assistant response",
+                                    text = textToSpeak,
+                                    focus = textToSpeak.length > 900,
+                                )
                             } else {
-                                tts.stop()
+                                reader.stop()
                             }
                         }
                     )

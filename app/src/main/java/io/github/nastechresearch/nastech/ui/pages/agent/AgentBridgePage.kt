@@ -45,7 +45,6 @@ import io.github.nastechresearch.nastech.ui.theme.CustomColors
 import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingVM
 import io.github.nastechresearch.nastech.utils.navigateToChatPage
-import io.github.nastechresearch.nastech.utils.navigateToVoiceCall
 import io.github.nastechresearch.nastech.utils.plus
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
@@ -211,7 +210,7 @@ fun AgentBridgePage(vm: SettingVM = koinViewModel()) {
             },
             onStartVoice = {
                 showActionsSheet = false
-                navigateToVoiceCall(navigator)
+                navigateToChatPage(navigator, initText = "Start a voice-enabled conversation: ")
             },
             onOpenSkills = {
                 showActionsSheet = false
@@ -447,7 +446,7 @@ private fun AgentActionsSheet(
             )
             AgentSheetAction("Plan a project", "Open a chat with a project-planning starter", HugeIcons.Sparkles, onStartPlanning)
             AgentSheetAction("Research a topic", "Open a chat with a research-brief starter", HugeIcons.Message01, onStartResearch)
-            AgentSheetAction("Start a voice-ready chat", "Open the normal chat composer with voice input when configured", HugeIcons.Message01, onStartVoice)
+            AgentSheetAction("Start a voice-enabled chat", "Open the normal composer with speech input and the docked reader", HugeIcons.Message01, onStartVoice)
             AgentSheetAction("Choose skills", "Manage reusable capabilities for your assistants", HugeIcons.Puzzle, onOpenSkills)
             AgentSheetAction("Attach workspace context", "Open local workspaces and project files", HugeIcons.Folder01, onOpenWorkspaces)
             Spacer(Modifier.height(8.dp))
