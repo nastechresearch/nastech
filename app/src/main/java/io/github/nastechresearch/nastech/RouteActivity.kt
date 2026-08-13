@@ -104,7 +104,6 @@ import io.github.nastechresearch.nastech.ui.pages.extensions.workspace.Workspace
 import me.rerere.workspace.WorkspaceStorageArea
 import io.github.nastechresearch.nastech.ui.pages.favorite.FavoritePage
 import io.github.nastechresearch.nastech.ui.pages.history.HistoryPage
-import io.github.nastechresearch.nastech.ui.pages.home.HomePage
 import io.github.nastechresearch.nastech.ui.pages.imggen.ImageGenPage
 import io.github.nastechresearch.nastech.ui.pages.log.LogPage
 import io.github.nastechresearch.nastech.ui.pages.search.SearchPage
@@ -303,7 +302,7 @@ class RouteActivity : ComponentActivity() {
         } else if (deepLinkConversationId != null) {
             rememberNavBackStack(Screen.Chat(initialChatIds.last()))
         } else {
-            rememberNavBackStack(Screen.Home)
+            rememberNavBackStack(Screen.Chat(initialChatIds.last()))
         }
         SideEffect { this@RouteActivity.navStack = backStack }
 
@@ -381,13 +380,6 @@ class RouteActivity : ComponentActivity() {
                                     + NavDisplay.popTransitionSpec { fadeIn() togetherWith fadeOut() }
                             ) {
                                 AgentBridgePage()
-                            }
-
-                            entry<Screen.Home>(
-                                metadata = NavDisplay.transitionSpec { fadeIn() togetherWith fadeOut() }
-                                    + NavDisplay.popTransitionSpec { fadeIn() togetherWith fadeOut() }
-                            ) {
-                                HomePage()
                             }
 
                             entry<Screen.Chat>(
@@ -730,9 +722,6 @@ class RouteActivity : ComponentActivity() {
 sealed interface Screen : NavKey {
     @Serializable
     data object AgentBridge : Screen
-
-    @Serializable
-    data object Home : Screen
 
     @Serializable
     data class Chat(

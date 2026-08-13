@@ -56,9 +56,9 @@ fun WelcomePage(chatId: String, vm: SettingVM = koinViewModel()) {
                     Text("Nastech", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
                     Text(
                         text = when (page) {
-                            0 -> "A private, configurable workspace for conversations and approved actions."
+                            0 -> "A private, configurable assistant for conversations and approved actions."
                             1 -> "Start with the capabilities you want, and keep every step under your control."
-                            else -> "Review the terms before entering your Nastech workspace."
+                            else -> "Review the terms before starting your first Nastech conversation."
                         },
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -95,7 +95,7 @@ fun WelcomePage(chatId: String, vm: SettingVM = koinViewModel()) {
                                     vm.updateSettings(
                                         settings.copy(onboardingAcceptedVersion = BuildConfig.VERSION_NAME),
                                     )
-                                    navigator.clearAndNavigate(Screen.Home)
+                                    navigator.clearAndNavigate(Screen.Chat(chatId))
                                 }
                             },
                             enabled = page < 2 || acceptedTerms,

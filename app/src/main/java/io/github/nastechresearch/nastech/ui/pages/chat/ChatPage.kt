@@ -62,10 +62,8 @@ import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.LeftToRightListBullet
 import me.rerere.hugeicons.stroke.Menu03
-import me.rerere.hugeicons.stroke.Message01
 import me.rerere.hugeicons.stroke.MessageAdd01
 import io.github.nastechresearch.nastech.R
-import io.github.nastechresearch.nastech.Screen
 import io.github.nastechresearch.nastech.data.datastore.Settings
 import io.github.nastechresearch.nastech.data.datastore.findProvider
 import io.github.nastechresearch.nastech.data.datastore.getCurrentAssistant
@@ -320,9 +318,6 @@ private fun ChatPageContent(
                     previewMode = previewMode,
                     onNewChat = {
                         navigateToChatPage(navController)
-                    },
-                    onGoHome = {
-                        navController.clearAndNavigate(Screen.Home)
                     },
                     onClickMenu = {
                         previewMode = !previewMode
@@ -726,7 +721,6 @@ private fun TopBar(
     previewMode: Boolean,
     onClickMenu: () -> Unit,
     onNewChat: () -> Unit,
-    onGoHome: () -> Unit,
     onUpdateTitle: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -785,9 +779,6 @@ private fun TopBar(
             }
         },
         actions = {
-            IconButton(onClick = onGoHome) {
-                Icon(HugeIcons.Message01, "Open workspace")
-            }
             IconButton(
                 onClick = {
                     onClickMenu()
