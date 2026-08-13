@@ -62,6 +62,7 @@ import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.LeftToRightListBullet
 import me.rerere.hugeicons.stroke.Menu03
+import me.rerere.hugeicons.stroke.Message01
 import me.rerere.hugeicons.stroke.MessageAdd01
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.Screen
