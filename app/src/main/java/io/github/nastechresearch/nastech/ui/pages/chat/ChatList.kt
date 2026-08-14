@@ -97,7 +97,6 @@ import io.github.nastechresearch.nastech.service.ChatError
 import io.github.nastechresearch.nastech.ui.components.message.ChatMessage
 import io.github.nastechresearch.nastech.ui.components.ui.ErrorCardsDisplay
 import io.github.nastechresearch.nastech.ui.components.ui.ListSelectableItem
-import io.github.nastechresearch.nastech.ui.components.ui.RabbitLoadingIndicator
 import io.github.nastechresearch.nastech.ui.components.ui.Tooltip
 import io.github.nastechresearch.nastech.ui.hooks.ImeLazyListAutoScroller
 import io.github.nastechresearch.nastech.ui.theme.ChatFontProvider
@@ -106,7 +105,6 @@ import kotlin.math.roundToInt
 import kotlin.uuid.Uuid
 
 private const val TAG = "ChatList"
-private const val LoadingIndicatorKey = "LoadingIndicator"
 private const val ScrollBottomKey = "ScrollBottomKey"
 
 @Composable
@@ -380,20 +378,6 @@ private fun ChatListNormal(
                         customSystemPrompt = conversation.customSystemPrompt,
                         onSystemPromptChange = onConversationSystemPromptChange,
                     )
-                }
-            }
-
-            if (loading) {
-                item(LoadingIndicatorKey) {
-                    Row(
-                        modifier = Modifier.padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        RabbitLoadingIndicator(
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
                 }
             }
 

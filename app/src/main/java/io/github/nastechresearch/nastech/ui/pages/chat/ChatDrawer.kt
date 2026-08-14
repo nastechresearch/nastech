@@ -1,6 +1,7 @@
 package io.github.nastechresearch.nastech.ui.pages.chat
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -19,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -80,7 +82,6 @@ import io.github.nastechresearch.nastech.data.repository.ConversationRepository
 import io.github.nastechresearch.nastech.ui.components.ai.AssistantPicker
 import io.github.nastechresearch.nastech.ui.components.ui.BackupReminderCard
 import io.github.nastechresearch.nastech.ui.components.ui.Greeting
-import io.github.nastechresearch.nastech.ui.components.ui.Tooltip
 import io.github.nastechresearch.nastech.ui.components.ui.UIAvatar
 import androidx.compose.ui.draw.clip
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
@@ -318,97 +319,72 @@ fun ChatDrawerContent(
                 }
             )
 
-            Row(
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                DrawerAction(
-                    icon = {
-                        Icon(
-                            imageVector = HugeIcons.LookTop,
-                            contentDescription = stringResource(R.string.assistant_page_title)
-                        )
-                    },
-                    label = {
-                        Text(stringResource(R.string.assistant_page_title))
-                    },
-                    onClick = {
-                        navController.navigate(Screen.Assistant)
-                    },
-                )
-
-                Box {
-                    DrawerAction(
-                        icon = {
-                            Icon(HugeIcons.Sparkles, stringResource(R.string.menu))
-                        },
-                        label = {
-                            Text(stringResource(R.string.menu))
-                        },
-                        onClick = {
-                            showMenuPopup = true
-                        },
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    DrawerGridTile(
+                        icon = HugeIcons.LookTop,
+                        label = stringResource(R.string.assistant_page_title),
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate(Screen.Assistant) },
                     )
-                    DropdownMenu(
-                        expanded = showMenuPopup,
-                        onDismissRequest = { showMenuPopup = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_page_menu_ai_translator)) },
-                            leadingIcon = { Icon(HugeIcons.LanguageCircle, null) },
-                            onClick = {
-                                showMenuPopup = false
-                                navController.navigate(Screen.Translator)
-                            }
+                    Box(modifier = Modifier.weight(1f)) {
+                        DrawerGridTile(
+                            icon = HugeIcons.Sparkles,
+                            label = stringResource(R.string.menu),
+                            onClick = { showMenuPopup = true },
                         )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.chat_page_menu_image_generation)) },
-                            leadingIcon = { Icon(HugeIcons.Image02, null) },
-                            onClick = {
-                                showMenuPopup = false
-                                navController.navigate(Screen.ImageGen)
-                            }
-                        )
+                        DropdownMenu(
+                            expanded = showMenuPopup,
+                            onDismissRequest = { showMenuPopup = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chat_page_menu_ai_translator)) },
+                                leadingIcon = { Icon(HugeIcons.LanguageCircle, null) },
+                                onClick = {
+                                    showMenuPopup = false
+                                    navController.navigate(Screen.Translator)
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.chat_page_menu_image_generation)) },
+                                leadingIcon = { Icon(HugeIcons.Image02, null) },
+                                onClick = {
+                                    showMenuPopup = false
+                                    navController.navigate(Screen.ImageGen)
+                                },
+                            )
+                        }
                     }
                 }
-
-                DrawerAction(
-                    icon = {
-                        Icon(HugeIcons.InLove, stringResource(R.string.favorite_page_title))
-                    },
-                    label = {
-                        Text(stringResource(R.string.favorite_page_title))
-                    },
-                    onClick = {
-                        navController.navigate(Screen.Favorite)
-                    },
-                )
-
-                DrawerAction(
-                    icon = {
-                        Icon(HugeIcons.ChartColumn, stringResource(R.string.chat_drawer_statistics))
-                    },
-                    label = {
-                        Text(stringResource(R.string.chat_drawer_statistics))
-                    },
-                    onClick = {
-                        navController.navigate(Screen.Stats)
-                    },
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                DrawerAction(
-                    icon = {
-                        Icon(HugeIcons.Settings03, null)
-                    },
-                    label = { Text(stringResource(R.string.settings)) },
-                    onClick = {
-                        navController.navigate(Screen.Setting)
-                    },
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    DrawerGridTile(
+                        icon = HugeIcons.InLove,
+                        label = stringResource(R.string.favorite_page_title),
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate(Screen.Favorite) },
+                    )
+                    DrawerGridTile(
+                        icon = HugeIcons.ChartColumn,
+                        label = stringResource(R.string.chat_drawer_statistics),
+                        modifier = Modifier.weight(1f),
+                        onClick = { navController.navigate(Screen.Stats) },
+                    )
+                }
+                DrawerGridTile(
+                    icon = HugeIcons.Settings03,
+                    label = stringResource(R.string.settings),
+                    onClick = { navController.navigate(Screen.Setting) },
                 )
             }
         }
@@ -688,95 +664,68 @@ fun ChatDrawerContent(
 
 @Composable
 private fun DrawerActions(navController: Navigator) {
-    Column {
-        // 搜索入口
-        Surface(
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        DrawerGridTile(
+            icon = HugeIcons.Search01,
+            label = stringResource(R.string.chat_page_search_chats),
+            modifier = Modifier.weight(1f),
             onClick = { navController.navigate(Screen.MessageSearch) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp),
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Icon(
-                    imageVector = HugeIcons.Search01,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = stringResource(R.string.chat_page_search_chats),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        }
-
-        // 历史记录入口
-        Surface(
+        )
+        DrawerGridTile(
+            icon = HugeIcons.TransactionHistory,
+            label = stringResource(R.string.chat_page_history),
+            modifier = Modifier.weight(1f),
             onClick = { navController.navigate(Screen.History) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 4.dp),
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Icon(
-                    imageVector = HugeIcons.TransactionHistory,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = stringResource(R.string.chat_page_history),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        }
+        )
     }
 }
 
 @Composable
-private fun DrawerAction(
-    modifier: Modifier = Modifier,
-    icon: @Composable () -> Unit,
-    label: @Composable () -> Unit,
+private fun DrawerGridTile(
+    icon: ImageVector,
+    label: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val tileGlass = glassSurface(
+        GlassSurface.SIDEBAR,
+        MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
+    val contentColor = glassContentColor(
+        GlassSurface.SIDEBAR,
+        MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
     Surface(
         onClick = onClick,
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.primaryContainer,
-        shape = CircleShape,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 68.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = tileGlass.container,
+        contentColor = contentColor,
+        border = BorderStroke(1.dp, tileGlass.border),
     ) {
-        Tooltip(
-            tooltip = {
-                label()
-            }
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .padding(10.dp)
-                    .size(20.dp),
-            ) {
-                icon()
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(19.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

@@ -58,6 +58,7 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import me.rerere.ai.core.MessageRole
 import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.common.android.appTempFolder
@@ -291,6 +292,16 @@ private fun ChatPageContent(
     var previewMode by rememberSaveable { mutableStateOf(false) }
     val hazeState = rememberHazeState()
     val assistant = setting.getCurrentAssistant()
+    val liveTaskTitle = remember(conversation.currentMessages) {
+        conversation.currentMessages
+            .lastOrNull { it.role == MessageRole.USER }
+            ?.parts
+            ?.filterIsInstance<UIMessagePart.Text>()
+            ?.lastOrNull()
+            ?.text
+            ?.trim()
+            ?.take(96)
+    }
     var showFilesSheet by remember { mutableStateOf(false) }
 
     val completionProviders = remember(assistant.workspaceId, conversation.workspaceCwd, workspaceRepository) {
@@ -336,6 +347,7 @@ private fun ChatPageContent(
                     state = inputState,
                     loading = loadingJob != null,
                     processingStatus = processingStatus,
+                    taskTitle = liveTaskTitle,
                     settings = setting,
                     hazeState = hazeState,
                     completionProviders = completionProviders,

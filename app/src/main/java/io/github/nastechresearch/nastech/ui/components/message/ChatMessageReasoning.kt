@@ -168,12 +168,16 @@ private fun ReasoningContent(
             }
     ) {
         val reasoningContent = @Composable {
-            MarkdownBlock(
-                content = reasoning.reasoning.replaceRegexes(
+            val readableReasoning = reasoning.reasoning
+                .replaceRegexes(
                     assistant = assistant,
                     scope = AssistantAffectScope.ASSISTANT,
                     visual = true,
-                ),
+                )
+                .toReadableReasoning()
+                .ifBlank { stringResource(R.string.notification_live_update_thinking) }
+            MarkdownBlock(
+                content = readableReasoning,
                 style = reasoningTextStyle,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -254,6 +258,22 @@ fun ChainOfThoughtScope.ChatMessageReasoningStep(
     )
 }
 
+
+private val FencedCodeBlock = Regex("(?s)```.*?```")
+private val InlineCode = Regex("`[^`\\n]+`")
+private val RawPayloadLine = Regex(
+    "^\\s*(?:[{}\\[\\]]|(?:val|var|fun|class|import|const)\\b|[A-Za-z_][A-Za-z0-9_]*\\s*[:=].*[;{}])"
+)
+
+/** Keeps the inline thinking stream human-readable and never turns it into a code or JSON viewer. */
+private fun String.toReadableReasoning(): String =
+    replace(FencedCodeBlock, "")
+        .replace(InlineCode, "")
+        .lineSequence()
+        .filterNot { line -> RawPayloadLine.containsMatchIn(line) }
+        .joinToString("\n")
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
 
 @Composable
 private fun ReasoningTitle(title: String) {

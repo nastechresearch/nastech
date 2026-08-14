@@ -54,7 +54,6 @@ fun ChatMessageUserAvatar(
 @Composable
 fun ChatMessageAssistantAvatar(
     message: UIMessage,
-    loading: Boolean,
     model: Model?,
     assistant: Assistant?,
     modifier: Modifier = Modifier,
@@ -74,7 +73,7 @@ fun ChatMessageAssistantAvatar(
                         name = assistant.name,
                         modifier = Modifier.size(28.dp),
                         value = assistant.avatar,
-                        loading = loading,
+                        loading = false,
                     )
                 }
                 Row(
@@ -95,7 +94,7 @@ fun ChatMessageAssistantAvatar(
                     AutoAIIcon(
                         name = model.modelId,
                         modifier = Modifier.size(28.dp),
-                        loading = loading
+                        loading = false
                     )
                 }
                 Row(

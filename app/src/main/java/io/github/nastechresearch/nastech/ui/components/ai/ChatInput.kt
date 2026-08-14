@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -92,6 +94,7 @@ import me.rerere.hugeicons.stroke.ArrowUp01
 import me.rerere.hugeicons.stroke.ArrowUp02
 import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.FullScreen
+import me.rerere.hugeicons.stroke.Tick01
 import me.rerere.hugeicons.stroke.Zap
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.data.datastore.GlassSurface
@@ -124,6 +127,7 @@ fun ChatInput(
     state: ChatInputState,
     loading: Boolean,
     processingStatus: String? = null,
+    taskTitle: String? = null,
     settings: Settings,
     hazeState: HazeState,
     enableSearch: Boolean,
@@ -216,6 +220,7 @@ fun ChatInput(
             LiveThinkingStrip(
                 loading = loading,
                 processingStatus = processingStatus,
+                taskTitle = taskTitle,
                 modifier = Modifier.padding(horizontal = 4.dp),
             )
 
@@ -413,19 +418,33 @@ fun ChatInput(
 }
 
 /**
- * Keeps active agent work visible without consuming the chat canvas. The strip is intentionally
- * a single line while collapsed; tapping it reveals the current processing detail, then it folds
- * away automatically as soon as generation ends.
+ * The one place where active agent work is surfaced. It stays compact while streaming and expands
+ * into a small, human-readable task history on demand. Raw arguments, code, and tool payloads are
+ * deliberately excluded; only the app-provided activity summaries are retained.
  */
 @Composable
 private fun LiveThinkingStrip(
     loading: Boolean,
     processingStatus: String?,
+    taskTitle: String?,
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    LaunchedEffect(loading) {
-        if (!loading) expanded = false
+    val progressEvents = remember { mutableStateListOf<String>() }
+    val currentActivity = when {
+        !processingStatus.isNullOrBlank() -> processingStatus
+        !taskTitle.isNullOrBlank() -> stringResource(R.string.chat_input_task_progress_task, taskTitle)
+        else -> stringResource(R.string.chat_input_task_progress_working)
+    }
+
+    LaunchedEffect(loading, currentActivity) {
+        if (!loading) {
+            expanded = false
+            progressEvents.clear()
+        } else if (progressEvents.lastOrNull() != currentActivity) {
+            progressEvents.add(currentActivity)
+            if (progressEvents.size > 4) progressEvents.removeAt(0)
+        }
     }
 
     AnimatedVisibility(
@@ -434,7 +453,6 @@ private fun LiveThinkingStrip(
         exit = fadeOut() + scaleOut(),
         modifier = modifier,
     ) {
-        val status = processingStatus ?: stringResource(R.string.notification_live_update_thinking)
         Surface(
             onClick = { expanded = !expanded },
             modifier = Modifier
@@ -449,25 +467,25 @@ private fun LiveThinkingStrip(
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
-                    Surface(
-                        modifier = Modifier.size(8.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                        content = {},
-                    )
                     Text(
-                        text = status,
+                        text = currentActivity,
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.labelMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                    )
+                    // The only streaming marker: a quiet rolling ring in the strip's corner.
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp,
                     )
                     Icon(
                         imageVector = if (expanded) HugeIcons.ArrowUp01 else HugeIcons.ArrowDown01,
@@ -477,11 +495,44 @@ private fun LiveThinkingStrip(
                     )
                 }
                 AnimatedVisibility(visible = expanded) {
-                    Text(
-                        text = stringResource(R.string.chat_input_live_work_detail),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(R.string.chat_input_task_progress),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        progressEvents.forEachIndexed { index, activity ->
+                            val active = index == progressEvents.lastIndex
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                            ) {
+                                if (active) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(14.dp),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        strokeWidth = 2.dp,
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = HugeIcons.Tick01,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.tertiary,
+                                    )
+                                }
+                                Text(
+                                    text = activity,
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -438,6 +438,9 @@
   <string name="notification_live_update_thinking">Thinking...</string>
   <string name="notification_live_update_title">Generating response...</string>
   <string name="chat_input_live_work_detail">Nastech is working in this conversation. Tap the stop button below to cancel the current run.</string>
+  <string name="chat_input_task_progress">Task Progress</string>
+  <string name="chat_input_task_progress_working">Working on your request…</string>
+  <string name="chat_input_task_progress_task">Working on: %1$s</string>
   <string name="notification_live_update_tool">Running tool: %s</string>
   <string name="notification_live_update_writing">Writing response...</string>
   <string name="notification_web_server_running">Web Server Running</string>
