@@ -159,8 +159,8 @@ fun ChatInput(
             bottomStart = CornerSize(0.dp),
             bottomEnd = CornerSize(0.dp),
         )
-    } else {
-        MaterialTheme.shapes.largeIncreased
+        } else {
+        RoundedCornerShape(30.dp)
     }
 
     fun sendMessage() {
@@ -267,6 +267,13 @@ fun ChatInput(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
+                        ActionIconButton(onClick = onMoreClick) {
+                            Icon(
+                                imageVector = HugeIcons.Add01,
+                                contentDescription = stringResource(R.string.more_options),
+                            )
+                        }
+
                         Row(
                             modifier = Modifier
                                 .weight(1f)
@@ -320,15 +327,6 @@ fun ChatInput(
                                 )
                             }
 
-                        }
-
-                        ActionIconButton(
-                            onClick = onMoreClick
-                        ) {
-                            Icon(
-                                imageVector = HugeIcons.Add01,
-                                contentDescription = stringResource(R.string.more_options)
-                            )
                         }
 
                         if (asrState.isAvailable || asrState.isRecording) {

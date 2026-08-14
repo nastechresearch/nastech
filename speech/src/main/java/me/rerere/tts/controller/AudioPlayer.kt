@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -53,17 +54,22 @@ class AudioPlayer(context: Context) {
 
     @OptIn(UnstableApi::class)
     suspend fun play(response: TTSResponse) = suspendCancellableCoroutine<Unit> { cont ->
+        if (response.audioData.isEmpty()) {
+            cont.resumeWithException(IllegalStateException("TTS produced no audio data"))
+            return@suspendCancellableCoroutine
+        }
+        val playbackFormat = if (response.format == AudioFormat.PCM) AudioFormat.WAV else response.format
         val bytes = if (response.format == AudioFormat.PCM) {
             pcmToWav(response.audioData, response.sampleRate ?: 24000)
         } else response.audioData
 
+        val mediaItem = MediaItem.Builder()
+            .setUri(Uri.EMPTY)
+            .setMimeType(playbackFormat.mimeType())
+            .build()
         val dataSourceFactory = DataSource.Factory { ByteArrayDataSource(bytes) }
         val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(Uri.EMPTY))
-
-        player.setMediaSource(mediaSource)
-        player.prepare()
-        player.play()
+            .createMediaSource(mediaItem)
 
         _playbackState.update {
             it.copy(
@@ -125,6 +131,11 @@ class AudioPlayer(context: Context) {
             }
         }
         player.addListener(listener)
+        player.stop()
+        player.clearMediaItems()
+        player.setMediaSource(mediaSource)
+        player.prepare()
+        player.play()
         cont.invokeOnCancellation {
             player.removeListener(listener)
             player.stop()
@@ -177,6 +188,14 @@ class AudioPlayer(context: Context) {
             write(pcm)
         }
         return out.toByteArray()
+    }
+
+    private fun AudioFormat.mimeType(): String? = when (this) {
+        AudioFormat.WAV, AudioFormat.PCM -> MimeTypes.AUDIO_WAV
+        AudioFormat.MP3 -> MimeTypes.AUDIO_MPEG
+        AudioFormat.OGG -> MimeTypes.AUDIO_OGG
+        AudioFormat.AAC -> MimeTypes.AUDIO_AAC
+        AudioFormat.OPUS -> MimeTypes.AUDIO_OPUS
     }
 
     private fun intToBytes(value: Int) = byteArrayOf(

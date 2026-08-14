@@ -12,22 +12,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PermanentNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.currentWindowDpSize
@@ -47,9 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
@@ -69,9 +63,7 @@ import me.rerere.hugeicons.stroke.Menu03
 import me.rerere.hugeicons.stroke.MessageAdd01
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.data.datastore.Settings
-import io.github.nastechresearch.nastech.data.datastore.findProvider
 import io.github.nastechresearch.nastech.data.datastore.getCurrentAssistant
-import io.github.nastechresearch.nastech.data.datastore.getCurrentChatModel
 import io.github.nastechresearch.nastech.data.files.FilesManager
 import io.github.nastechresearch.nastech.data.model.Assistant
 import io.github.nastechresearch.nastech.data.model.Conversation
@@ -89,8 +81,6 @@ import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.context.Navigator
 import io.github.nastechresearch.nastech.ui.hooks.ChatInputState
-import io.github.nastechresearch.nastech.ui.hooks.EditStateContent
-import io.github.nastechresearch.nastech.ui.hooks.useEditState
 import io.github.nastechresearch.nastech.utils.ImageUtils
 import io.github.nastechresearch.nastech.utils.base64Decode
 import io.github.nastechresearch.nastech.utils.isAllowedFileType
@@ -99,6 +89,8 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 import java.io.File
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.uuid.Uuid
 
 @Composable
@@ -326,7 +318,6 @@ private fun ChatPageContent(
         Scaffold(
             topBar = {
                 TopBar(
-                    settings = setting,
                     conversation = conversation,
                     bigScreen = bigScreen,
                     drawerState = drawerState,
@@ -337,9 +328,6 @@ private fun ChatPageContent(
                     onClickMenu = {
                         previewMode = !previewMode
                     },
-                    onUpdateTitle = {
-                        vm.updateTitle(it)
-                    }
                 )
             },
             bottomBar = {
@@ -741,122 +729,46 @@ private fun ChatFilesPickerSheet(
 
 @Composable
 private fun TopBar(
-    settings: Settings,
     conversation: Conversation,
     drawerState: DrawerState,
     bigScreen: Boolean,
     previewMode: Boolean,
     onClickMenu: () -> Unit,
     onNewChat: () -> Unit,
-    onUpdateTitle: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val toaster = LocalToaster.current
-    val titleState = useEditState<String> {
-        onUpdateTitle(it)
+    val startedAt = remember(conversation.id, conversation.createAt) {
+        DateTimeFormatter.ofPattern("HH:mm")
+            .withZone(ZoneId.systemDefault())
+            .format(conversation.createAt)
     }
 
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
         navigationIcon = {
             if (!bigScreen) {
-                IconButton(
-                    onClick = {
-                        scope.launch { drawerState.open() }
-                    }
-                ) {
+                IconButton(onClick = { scope.launch { drawerState.open() } }) {
                     Icon(HugeIcons.Menu03, stringResource(R.string.accessibility_messages))
                 }
             }
         },
         title = {
-            val editTitleWarning = stringResource(R.string.chat_page_edit_title_warning)
-            Surface(
-                onClick = {
-                    if (conversation.messageNodes.isNotEmpty()) {
-                        titleState.open(conversation.title)
-                    } else {
-                        toaster.show(editTitleWarning, type = ToastType.Warning)
-                    }
-                },
-                color = Color.Transparent,
-            ) {
-                Column {
-                    val assistant = settings.getCurrentAssistant()
-                    val model = settings.getCurrentChatModel()
-                    val provider = model?.findProvider(providers = settings.providers, checkOverwrite = false)
-                    Text(
-                        text = conversation.title.ifBlank { stringResource(R.string.chat_page_new_chat) },
-                        maxLines = 1,
-                        style = MaterialTheme.typography.bodyMedium,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (model != null && provider != null) {
-                        Text(
-                            text = "${assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) }} / ${model.displayName} (${provider.name})",
-                            overflow = TextOverflow.Ellipsis,
-                            maxLines = 1,
-                            color = LocalContentColor.current.copy(0.65f),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 8.sp,
-                            )
-                        )
-                    }
-                }
-            }
+            Text(
+                text = startedAt,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         },
         actions = {
-            IconButton(
-                onClick = {
-                    onClickMenu()
-                }
-            ) {
-                Icon(if (previewMode) HugeIcons.Cancel01 else HugeIcons.LeftToRightListBullet, stringResource(R.string.accessibility_chat_options))
+            IconButton(onClick = onClickMenu) {
+                Icon(
+                    if (previewMode) HugeIcons.Cancel01 else HugeIcons.LeftToRightListBullet,
+                    stringResource(R.string.accessibility_chat_options),
+                )
             }
-
-            IconButton(
-                onClick = {
-                    onNewChat()
-                }
-            ) {
+            IconButton(onClick = onNewChat) {
                 Icon(HugeIcons.MessageAdd01, stringResource(R.string.chat_page_new_message))
             }
         },
     )
-    titleState.EditStateContent { title, onUpdate ->
-        AlertDialog(
-            onDismissRequest = {
-                titleState.dismiss()
-            },
-            title = {
-                Text(stringResource(R.string.chat_page_edit_title))
-            },
-            text = {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = onUpdate,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        titleState.confirm()
-                    }
-                ) {
-                    Text(stringResource(R.string.chat_page_save))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        titleState.dismiss()
-                    }
-                ) {
-                    Text(stringResource(R.string.chat_page_cancel))
-                }
-            }
-        )
-    }
 }

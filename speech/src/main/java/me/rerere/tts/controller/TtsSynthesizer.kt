@@ -35,9 +35,11 @@ class TtsSynthesizer(
             if (sampleRate == null) sampleRate = chunk.sampleRate
             output.write(chunk.data)
         }
+        val audioData = output.toByteArray()
+        check(audioData.isNotEmpty()) { "The selected TTS provider returned no audio data" }
         return TTSResponse(
-            audioData = output.toByteArray(),
-            format = format ?: AudioFormat.MP3,
+            audioData = audioData,
+            format = format ?: error("The selected TTS provider returned no audio format"),
             sampleRate = sampleRate
         )
     }
