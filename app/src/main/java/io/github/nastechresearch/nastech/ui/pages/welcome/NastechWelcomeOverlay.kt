@@ -155,7 +155,7 @@ fun NastechWelcomeOverlay(
                         tonalElevation = 8.dp,
                     ) {
                         androidx.compose.foundation.Image(
-                            painter = painterResource(R.mipmap.ic_launcher),
+                            painter = painterResource(R.mipmap.ic_launcher_foreground),
                             contentDescription = "Nastech",
                             modifier = Modifier.padding(12.dp),
                         )
