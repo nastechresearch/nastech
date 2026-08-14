@@ -284,16 +284,6 @@ private fun ChatPageContent(
     var previewMode by rememberSaveable { mutableStateOf(false) }
     val hazeState = rememberHazeState()
     val assistant = setting.getCurrentAssistant()
-    val liveTaskTitle = remember(conversation.currentMessages) {
-        conversation.currentMessages
-            .lastOrNull { it.role == MessageRole.USER }
-            ?.parts
-            ?.filterIsInstance<UIMessagePart.Text>()
-            ?.lastOrNull()
-            ?.text
-            ?.trim()
-            ?.take(96)
-    }
     var showFilesSheet by remember { mutableStateOf(false) }
 
     val completionProviders = remember(assistant.workspaceId, conversation.workspaceCwd, workspaceRepository) {
@@ -334,8 +324,6 @@ private fun ChatPageContent(
                 ChatInput(
                     state = inputState,
                     loading = loadingJob != null,
-                    processingStatus = processingStatus,
-                    taskTitle = liveTaskTitle,
                     settings = setting,
                     hazeState = hazeState,
                     completionProviders = completionProviders,
@@ -428,6 +416,7 @@ private fun ChatPageContent(
                 conversation = conversation,
                 state = chatListState,
                 loading = loadingJob != null,
+                processingStatus = processingStatus,
                 previewMode = previewMode,
                 settings = setting,
                 hazeState = hazeState,

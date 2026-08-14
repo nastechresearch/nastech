@@ -194,30 +194,6 @@ fun ChatMessage(
             }
         }
 
-        AnimatedVisibility(
-            visible = loading && message.role == MessageRole.ASSISTANT,
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Row(
-                modifier = Modifier.padding(top = 2.dp, start = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Surface(
-                    modifier = Modifier.size(9.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    content = {},
-                )
-                Text(
-                    text = stringResource(R.string.notification_live_update_chip_thinking),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
         val showActions = if (lastMessage) {
             !loading
         } else {

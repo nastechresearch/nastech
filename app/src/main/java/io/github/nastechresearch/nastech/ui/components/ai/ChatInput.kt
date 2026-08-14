@@ -126,8 +126,6 @@ import kotlin.time.Duration.Companion.seconds
 fun ChatInput(
     state: ChatInputState,
     loading: Boolean,
-    processingStatus: String? = null,
-    taskTitle: String? = null,
     settings: Settings,
     hazeState: HazeState,
     enableSearch: Boolean,
@@ -217,13 +215,6 @@ fun ChatInput(
                 .padding(bottom = if (imeVisible) 0.dp else 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            LiveThinkingStrip(
-                loading = loading,
-                processingStatus = processingStatus,
-                taskTitle = taskTitle,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -411,128 +402,6 @@ fun ChatInput(
                 }
             }
 
-        }
-    }
-}
-
-/**
- * The one place where active agent work is surfaced. It stays compact while streaming and expands
- * into a small, human-readable task history on demand. Raw arguments, code, and tool payloads are
- * deliberately excluded; only the app-provided activity summaries are retained.
- */
-@Composable
-private fun LiveThinkingStrip(
-    loading: Boolean,
-    processingStatus: String?,
-    taskTitle: String?,
-    modifier: Modifier = Modifier,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val progressEvents = remember { mutableStateListOf<String>() }
-    val currentActivity = when {
-        !processingStatus.isNullOrBlank() -> processingStatus
-        !taskTitle.isNullOrBlank() -> stringResource(R.string.chat_input_task_progress_task, taskTitle)
-        else -> stringResource(R.string.chat_input_task_progress_working)
-    }
-
-    LaunchedEffect(loading, currentActivity) {
-        if (!loading) {
-            expanded = false
-            progressEvents.clear()
-        } else if (progressEvents.lastOrNull() != currentActivity) {
-            progressEvents.add(currentActivity)
-            if (progressEvents.size > 4) progressEvents.removeAt(0)
-        }
-    }
-
-    AnimatedVisibility(
-        visible = loading,
-        enter = fadeIn() + scaleIn(),
-        exit = fadeOut() + scaleOut(),
-        modifier = modifier,
-    ) {
-        Surface(
-            onClick = { expanded = !expanded },
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize(),
-            shape = RoundedCornerShape(18.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.82f),
-            border = BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-            ),
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(9.dp),
-                ) {
-                    Text(
-                        text = currentActivity,
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.labelMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    // The only streaming marker: a quiet rolling ring in the strip's corner.
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 2.dp,
-                    )
-                    Icon(
-                        imageVector = if (expanded) HugeIcons.ArrowUp01 else HugeIcons.ArrowDown01,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                AnimatedVisibility(visible = expanded) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = stringResource(R.string.chat_input_task_progress),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        progressEvents.forEachIndexed { index, activity ->
-                            val active = index == progressEvents.lastIndex
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(9.dp),
-                            ) {
-                                if (active) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(14.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        strokeWidth = 2.dp,
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = HugeIcons.Tick01,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = MaterialTheme.colorScheme.tertiary,
-                                    )
-                                }
-                                Text(
-                                    text = activity,
-                                    modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
