@@ -271,7 +271,7 @@ object PermissionInventory {
 
     private val DESCRIPTIONS = mapOf(
         Manifest.permission.CAMERA to "Used by take_photo to capture a still image.",
-        Manifest.permission.RECORD_AUDIO to "Used by record_audio and speech_to_text.",
+        Manifest.permission.RECORD_AUDIO to "Used by audio recording and cloud speech transcription.",
         Manifest.permission.READ_PHONE_STATE to "Used by get_telephony_info (SIM operator, signal).",
         Manifest.permission.ACCESS_FINE_LOCATION to "Used by get_location and get_wifi_info.",
         Manifest.permission.ACCESS_COARSE_LOCATION to "Approximate location fallback for get_location.",

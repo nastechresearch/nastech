@@ -1,22 +1,14 @@
 package io.github.nastechresearch.nastech.ui.pages.setting.components
 
 import me.rerere.ai.provider.ProviderSetting
-import io.github.nastechresearch.nastech.ui.components.ui.TagType
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProviderRequirementsTest {
     @Test
-    fun `llama cpp provider reports an on-device CPU-only requirement`() {
-        val requirements = ProviderRequirement.from(ProviderSetting.LlamaCppLocal())
-
-        assertEquals(1, requirements.size)
-        assertEquals(TagType.INFO, requirements.single().severity)
-    }
-
-    @Test
-    fun `openai provider has no special requirements`() {
+    fun `cloud providers have no device-specific requirements`() {
         assertTrue(ProviderRequirement.from(ProviderSetting.OpenAI()).isEmpty())
+        assertTrue(ProviderRequirement.from(ProviderSetting.Google()).isEmpty())
+        assertTrue(ProviderRequirement.from(ProviderSetting.Claude()).isEmpty())
     }
 }

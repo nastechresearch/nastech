@@ -28,8 +28,8 @@ android {
         applicationId = "io.github.nastechresearch.nastech"
         minSdk = 26
         targetSdk = 37
-        versionCode = 183
-        versionName = "2.4.15"
+        versionCode = 184
+        versionName = "2.4.16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -326,8 +326,6 @@ dependencies {
 
     // modules
     implementation(project(":ai"))
-    implementation(project(":local-llm"))
-    implementation(project(":llama-cpp"))
     implementation(project(":web"))
     implementation(project(":document"))
     implementation(project(":highlight"))

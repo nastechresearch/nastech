@@ -5,25 +5,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.rerere.asr.ASRProviderSetting
-import me.rerere.asr.LocalAsrModelPackage
-import me.rerere.asr.LocalAsrPackageManager
-import me.rerere.asr.LocalAsrPackageState
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.ui.components.ui.FormItem
 import io.github.nastechresearch.nastech.ui.components.ui.OutlinedNumberInput
 import io.github.nastechresearch.nastech.ui.components.ui.SelectTextField
-import org.koin.compose.koinInject
 
 @Composable
 fun ASRProviderConfigure(
@@ -44,7 +36,7 @@ fun ASRProviderConfigure(
                     is ASRProviderSetting.OpenAIRealtime -> "OpenAI Realtime"
                     is ASRProviderSetting.DashScope -> "DashScope"
                     is ASRProviderSetting.Volcengine -> "Volcengine"
-                    is ASRProviderSetting.LocalDevice -> "Local speech recognition"
+                    is ASRProviderSetting.ElevenLabs -> "ElevenLabs Speech to Text"
                     is ASRProviderSetting.MiMo -> "MiMo"
                     is ASRProviderSetting.Step -> "Step"
                 },
@@ -70,7 +62,7 @@ fun ASRProviderConfigure(
             is ASRProviderSetting.OpenAIRealtime -> OpenAIRealtimeASRConfiguration(setting, onValueChange)
             is ASRProviderSetting.DashScope -> DashScopeASRConfiguration(setting, onValueChange)
             is ASRProviderSetting.Volcengine -> VolcengineASRConfiguration(setting, onValueChange)
-            is ASRProviderSetting.LocalDevice -> LocalDeviceASRConfiguration(setting, onValueChange)
+            is ASRProviderSetting.ElevenLabs -> ElevenLabsASRConfiguration(setting, onValueChange)
             is ASRProviderSetting.MiMo -> MiMoASRConfiguration(setting, onValueChange)
             is ASRProviderSetting.Step -> StepASRConfiguration(setting, onValueChange)
         }
@@ -78,82 +70,66 @@ fun ASRProviderConfigure(
 }
 
 @Composable
-private fun LocalDeviceASRConfiguration(
-    setting: ASRProviderSetting.LocalDevice,
+private fun ElevenLabsASRConfiguration(
+    setting: ASRProviderSetting.ElevenLabs,
     onValueChange: (ASRProviderSetting) -> Unit,
 ) {
-    val packageManager = koinInject<LocalAsrPackageManager>()
-    val selectedPackage = LocalAsrModelPackage.fromId(setting.modelId)
-    val packageState by packageManager.state.collectAsStateWithLifecycle()
-
-    LaunchedEffect(selectedPackage) {
-        packageManager.select(selectedPackage)
-    }
-
     FormItem(
-        label = { Text("Offline speech model") },
-        description = { Text("Download the compact model once. Recognition stays entirely on this device and requires no API key.") },
+        label = { Text("ElevenLabs API key") },
+        description = { Text("A private ElevenLabs key used only for cloud transcription requests.") },
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SelectTextField(
-                value = selectedPackage.displayName,
-                options = LocalAsrModelPackage.entries,
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth(),
-                optionToString = { it.displayName },
-                onOptionSelected = { model ->
-                    packageManager.select(model)
-                    onValueChange(setting.copy(modelId = model.id))
-                },
-            )
-            Text(
-                when (val state = packageState) {
-                    is LocalAsrPackageState.NotDownloaded -> "${selectedPackage.description} Verification is required before microphone recognition starts."
-                    is LocalAsrPackageState.Downloading -> {
-                        val percent = if (state.totalBytes > 0L) (state.downloadedBytes * 100 / state.totalBytes).coerceIn(0, 100) else 0
-                        "Downloading local speech model: $percent%"
-                    }
-                    is LocalAsrPackageState.Verifying -> "Verifying the downloaded local speech model."
-                    is LocalAsrPackageState.Ready -> "Ready on this device · ${state.installedBytes / (1024 * 1024)} MB installed."
-                    is LocalAsrPackageState.Error -> state.message
-                },
-            )
-            FilledTonalButton(
-                onClick = {
-                    when (packageState) {
-                        is LocalAsrPackageState.NotDownloaded,
-                        is LocalAsrPackageState.Error -> packageManager.download(selectedPackage)
-                        is LocalAsrPackageState.Downloading,
-                        is LocalAsrPackageState.Verifying -> packageManager.cancelDownload()
-                        is LocalAsrPackageState.Ready -> packageManager.remove(selectedPackage)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    when (packageState) {
-                        is LocalAsrPackageState.NotDownloaded -> "Download local model"
-                        is LocalAsrPackageState.Error -> "Retry download"
-                        is LocalAsrPackageState.Downloading -> "Cancel download"
-                        is LocalAsrPackageState.Verifying -> "Cancel verification"
-                        is LocalAsrPackageState.Ready -> "Remove local model"
-                    },
-                )
-            }
-        }
-    }
-
-    FormItem(
-        label = { Text("Hardware optimization") },
-        description = { Text("CPU optimized is reliable on every device. Android accelerator requests NNAPI and automatically falls back to CPU if the selected device cannot run this model through NNAPI.") },
-    ) {
-        SelectTextField(
-            value = if (setting.provider == "nnapi") "Android accelerator (NNAPI)" else "CPU optimized",
-            options = listOf("cpu", "nnapi"),
-            readOnly = true,
+        OutlinedTextField(
+            value = setting.apiKey,
+            onValueChange = { onValueChange(setting.copy(apiKey = it)) },
             modifier = Modifier.fillMaxWidth(),
-            optionToString = { if (it == "nnapi") "Android accelerator (NNAPI)" else "CPU optimized" },
-            onOptionSelected = { provider -> onValueChange(setting.copy(provider = provider)) },
+            placeholder = { Text("xi-...") },
+        )
+    }
+
+    FormItem(
+        label = { Text("Service URL") },
+        description = { Text("Use the official ElevenLabs cloud API unless you have an approved compatible gateway.") },
+    ) {
+        OutlinedTextField(
+            value = setting.baseUrl,
+            onValueChange = { onValueChange(setting.copy(baseUrl = it)) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("https://api.elevenlabs.io") },
+        )
+    }
+
+    FormItem(
+        label = { Text("Scribe model") },
+        description = { Text("Choose scribe_v2 for standard cloud transcription or an ElevenLabs-supported realtime model.") },
+    ) {
+        OutlinedTextField(
+            value = setting.model,
+            onValueChange = { onValueChange(setting.copy(model = it)) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("scribe_v2") },
+        )
+    }
+
+    FormItem(
+        label = { Text("Language code") },
+        description = { Text("Optional ISO language code. Leave blank for automatic language detection.") },
+    ) {
+        OutlinedTextField(
+            value = setting.language,
+            onValueChange = { onValueChange(setting.copy(language = it)) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("en") },
+        )
+    }
+
+    FormItem(
+        label = { Text("Cloud upload interval") },
+        description = { Text("Seconds recorded before a partial cloud transcription is requested. Set 0 to send only when you stop recording.") },
+    ) {
+        OutlinedNumberInput(
+            value = setting.segmentDurationSec,
+            onValueChange = { onValueChange(setting.copy(segmentDurationSec = it.coerceAtLeast(0))) },
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

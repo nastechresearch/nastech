@@ -85,6 +85,24 @@ sealed class ASRProviderSetting {
         }
     }
 
+    @Serializable
+    @SerialName("elevenlabs")
+    data class ElevenLabs(
+        override val id: Uuid = Uuid.random(),
+        override val name: String = "ElevenLabs Speech to Text",
+        val apiKey: String = "",
+        val baseUrl: String = "https://api.elevenlabs.io",
+        val model: String = "scribe_v2",
+        val language: String = "",
+        val sampleRate: Int = 16000,
+        val segmentDurationSec: Int = 30,
+    ) : ASRProviderSetting() {
+        override fun copyProvider(
+            id: Uuid,
+            name: String,
+        ): ASRProviderSetting = copy(id = id, name = name)
+    }
+
     /**
      * 小米 MiMo ASR (mimo-v2.5-asr)。
      *
@@ -169,28 +187,13 @@ sealed class ASRProviderSetting {
         }
     }
 
-    @Serializable
-    @SerialName("local-device")
-    data class LocalDevice(
-        override val id: Uuid = Uuid.random(),
-        override val name: String = "Local Speech Recognition",
-        val modelId: String = LocalAsrModelPackage.ENGLISH_STREAMING_INT8.id,
-        val provider: String = "cpu",
-        val sampleRate: Int = 16_000,
-    ) : ASRProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): ASRProviderSetting = copy(id = id, name = name)
-    }
-
     companion object {
         val Types by lazy {
             listOf(
                 OpenAIRealtime::class,
                 DashScope::class,
                 Volcengine::class,
-                LocalDevice::class,
+                ElevenLabs::class,
                 MiMo::class,
                 Step::class,
             )

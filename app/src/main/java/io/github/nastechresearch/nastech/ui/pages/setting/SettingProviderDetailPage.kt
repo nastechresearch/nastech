@@ -872,6 +872,13 @@ private fun AddModelButton(
     }
 }
 
+private fun Model.isProviderListedFree(): Boolean {
+    val hasPublishedZeroPrice = pricePromptPerToken == 0.0 && priceCompletionPerToken == 0.0
+    val explicitlyFree = modelId.contains("free", ignoreCase = true) ||
+        displayName.contains("free", ignoreCase = true)
+    return hasPublishedZeroPrice || explicitlyFree
+}
+
 @Composable
 private fun ModelPicker(
     models: List<Model>,
@@ -888,16 +895,14 @@ private fun ModelPicker(
             sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)),
         ) {
             var filterText by remember { mutableStateOf("") }
+            var freeOnly by rememberSaveable { mutableStateOf(false) }
             val filterKeywords = filterText.split(" ").filter { it.isNotBlank() }
-            val filteredModels = models.fastFilter {
-                if (filterKeywords.isEmpty()) {
-                    true
-                } else {
-                    filterKeywords.all { keyword ->
-                        it.modelId.contains(keyword, ignoreCase = true) ||
-                            it.displayName.contains(keyword, ignoreCase = true)
-                    }
+            val filteredModels = models.fastFilter { model ->
+                val matchesSearch = filterKeywords.isEmpty() || filterKeywords.all { keyword ->
+                    model.modelId.contains(keyword, ignoreCase = true) ||
+                        model.displayName.contains(keyword, ignoreCase = true)
                 }
+                matchesSearch && (!freeOnly || model.isProviderListedFree())
             }
             Column(
                 modifier = Modifier
@@ -924,21 +929,28 @@ private fun ModelPicker(
                         selectedModels.none { it.modelId == model.modelId }
                     }
 
-                    TextButton(
-                        onClick = {
-                            if (unselectedCount > 0) {
-                                onAllModelSelected(filteredModels)
-                            } else {
-                                onAllModelDeselected(filteredModels)
-                            }
-                        },
-                    ) {
-                        Text(
-                            if (unselectedCount > 0) stringResource(
-                                R.string.setting_provider_page_select_all,
-                                unselectedCount
-                            ) else stringResource(R.string.setting_provider_page_deselect_models)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Free only", style = MaterialTheme.typography.labelMedium)
+                        Switch(
+                            checked = freeOnly,
+                            onCheckedChange = { freeOnly = it },
                         )
+                        TextButton(
+                            onClick = {
+                                if (unselectedCount > 0) {
+                                    onAllModelSelected(filteredModels)
+                                } else {
+                                    onAllModelDeselected(filteredModels)
+                                }
+                            },
+                        ) {
+                            Text(
+                                if (unselectedCount > 0) stringResource(
+                                    R.string.setting_provider_page_select_all,
+                                    unselectedCount
+                                ) else stringResource(R.string.setting_provider_page_deselect_models)
+                            )
+                        }
                     }
                 }
 

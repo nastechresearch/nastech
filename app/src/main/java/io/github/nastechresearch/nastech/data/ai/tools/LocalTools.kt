@@ -174,7 +174,6 @@ sealed class LocalToolOption {
     @Serializable @SerialName("sms_inbox")       data object SmsInbox       : LocalToolOption()
     @Serializable @SerialName("camera_photo")    data object CameraPhoto    : LocalToolOption()
     @Serializable @SerialName("mic_recorder")    data object MicRecorder    : LocalToolOption()
-    @Serializable @SerialName("speech_to_text")  data object SpeechToText   : LocalToolOption()
     @Serializable @SerialName("fingerprint")     data object Fingerprint    : LocalToolOption()
     @Serializable @SerialName("cron_jobs")       data object CronJobs       : LocalToolOption()
     @Serializable @SerialName("ssh")             data object Ssh            : LocalToolOption()
@@ -814,9 +813,6 @@ class LocalTools(
         if (options.contains(LocalToolOption.MicRecorder)) {
             tools.add(micRecorderTool(context))
         }
-        if (options.contains(LocalToolOption.SpeechToText)) {
-            tools.add(speechToTextTool(context))
-        }
         if (options.contains(LocalToolOption.Fingerprint)) {
             tools.add(fingerprintTool(context, biometricResultBuffer))
         }
@@ -888,13 +884,6 @@ class LocalTools(
             tools.add(io.github.nastechresearch.nastech.data.ai.tools.local.termuxSessionReadTool(context))
             tools.add(io.github.nastechresearch.nastech.data.ai.tools.local.termuxSessionKillTool(context))
             tools.add(io.github.nastechresearch.nastech.data.ai.tools.local.termuxSessionListTool(context))
-            // transcribe_audio_file shells out to whisper-cli via Termux's RUN_COMMAND
-            // service — it has a hard transitive dependency on Termux being present. No
-            // separate toggle; it lives under the Termux toggle.
-            tools.add(transcribeAudioFileTool(context))
-            // whisper_status is a free read-only pre-flight check — no approval needed.
-            // The LLM calls this BEFORE attempting transcription to know what's set up.
-            tools.add(whisperStatusTool(context, settingsStore))
         }
         if (options.contains(LocalToolOption.NotificationListener)) {
             tools.add(listRecentNotificationsTool())

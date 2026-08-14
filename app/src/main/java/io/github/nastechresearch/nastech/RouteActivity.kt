@@ -31,7 +31,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.graphics.Color
@@ -59,9 +62,11 @@ import coil3.svg.SvgDecoder
 import com.dokar.sonner.Toaster
 import com.dokar.sonner.rememberToasterState
 import kotlinx.serialization.Serializable
+import kotlinx.coroutines.launch
 import io.github.nastechresearch.nastech.data.datastore.SettingsStore
 import io.github.nastechresearch.nastech.data.datastore.DEFAULT_CODEX_PROVIDER_ID
 import io.github.nastechresearch.nastech.data.datastore.DEFAULT_GEMINI_OAUTH_PROVIDER_ID
+import io.github.nastechresearch.nastech.data.datastore.DEFAULT_OPENROUTER_PROVIDER_ID
 import io.github.nastechresearch.nastech.data.db.DatabaseMigrationTracker
 import io.github.nastechresearch.nastech.data.db.MigrationState
 import io.github.nastechresearch.nastech.data.event.AppEvent
@@ -147,6 +152,7 @@ import io.github.nastechresearch.nastech.ui.pages.share.handler.ShareHandlerPage
 import io.github.nastechresearch.nastech.ui.pages.stats.StatsPage
 import io.github.nastechresearch.nastech.ui.pages.translator.TranslatorPage
 import io.github.nastechresearch.nastech.ui.pages.webview.WebViewPage
+import io.github.nastechresearch.nastech.ui.pages.welcome.NastechWelcomeOverlay
 import io.github.nastechresearch.nastech.ui.theme.LocalDarkMode
 import io.github.nastechresearch.nastech.ui.theme.NastechTheme
 import io.github.nastechresearch.nastech.utils.CrashHandler
@@ -162,6 +168,7 @@ class RouteActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN_CODEX_SETTINGS = "open_codex_settings"
         const val EXTRA_OPEN_GEMINI_SETTINGS = "open_gemini_settings"
+        const val EXTRA_OPEN_OPENROUTER_SETTINGS = "open_openrouter_settings"
     }
 
     private val okHttpClient by inject<OkHttpClient>()
@@ -268,6 +275,13 @@ class RouteActivity : ComponentActivity() {
             }
             intent.removeExtra(EXTRA_OPEN_GEMINI_SETTINGS)
         }
+        if (intent.getBooleanExtra(EXTRA_OPEN_OPENROUTER_SETTINGS, false)) {
+            val destination = Screen.SettingProviderDetail(DEFAULT_OPENROUTER_PROVIDER_ID.toString())
+            navStack?.let { stack ->
+                if (stack.lastOrNull() != destination) stack.add(destination)
+            }
+            intent.removeExtra(EXTRA_OPEN_OPENROUTER_SETTINGS)
+        }
         // Navigate to the chat screen if a conversation ID is provided
         intent.getStringExtra("conversationId")?.let { text ->
             navStack?.add(Screen.Chat(text))
@@ -296,6 +310,9 @@ class RouteActivity : ComponentActivity() {
             }
         }
         val migrationState by DatabaseMigrationTracker.state.collectAsStateWithLifecycle()
+        val onboardingScope = rememberCoroutineScope()
+        var welcomeDismissedThisSession by rememberSaveable { mutableStateOf(false) }
+        val shouldShowWelcome = settings.onboardingAcceptedVersion.isBlank() && !welcomeDismissedThisSession
 
         // Resolve once per composition (not on every recomposition) so a later removeExtra()
         // of "conversationId" can't flip which rememberNavBackStack() branch below gets called.
@@ -327,6 +344,11 @@ class RouteActivity : ComponentActivity() {
                     Screen.SettingProviderDetail(DEFAULT_GEMINI_OAUTH_PROVIDER_ID.toString())
                 if (backStack.lastOrNull() != destination) backStack.add(destination)
                 intent.removeExtra(EXTRA_OPEN_GEMINI_SETTINGS)
+            }
+            if (intent.getBooleanExtra(EXTRA_OPEN_OPENROUTER_SETTINGS, false)) {
+                val destination = Screen.SettingProviderDetail(DEFAULT_OPENROUTER_PROVIDER_ID.toString())
+                if (backStack.lastOrNull() != destination) backStack.add(destination)
+                intent.removeExtra(EXTRA_OPEN_OPENROUTER_SETTINGS)
             }
             // Deep link was already consumed into the initial back stack above; clear it so a
             // future recreation with the same Intent doesn't re-push it (mirrors how
@@ -717,6 +739,19 @@ class RouteActivity : ComponentActivity() {
                                 }
                             }
                         }
+                    }
+                    if (shouldShowWelcome) {
+                        NastechWelcomeOverlay(
+                            modifier = Modifier.fillMaxSize(),
+                            onComplete = {
+                                welcomeDismissedThisSession = true
+                                onboardingScope.launch {
+                                    settingsStore.update { current ->
+                                        current.copy(onboardingAcceptedVersion = "cloud-first-welcome-1")
+                                    }
+                                }
+                            },
+                        )
                     }
                     ScreenReaderOverlay(
                         state = screenReader,

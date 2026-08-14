@@ -1,12 +1,14 @@
 package io.github.nastechresearch.nastech.ui.pages.setting
 
 import android.content.ClipData
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -79,6 +82,9 @@ import io.github.nastechresearch.nastech.ui.pages.setting.components.PresetTheme
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
 import io.github.nastechresearch.nastech.ui.theme.CustomTheme
 import io.github.nastechresearch.nastech.ui.theme.LocalDarkMode
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.plus
 import org.koin.androidx.compose.koinViewModel
 import kotlin.math.roundToInt
@@ -122,6 +128,13 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
             contentPadding = innerPadding + PaddingValues(8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            item("nastechVisualPresets") {
+                NastechVisualPresetGallery(
+                    selected = NastechVisualPresets.firstOrNull { it.matches(settings) }?.id,
+                    onApply = { preset -> vm.updateSettings(preset.applyTo(settings)) },
+                )
+            }
+
             if (settings.dynamicColor) {
                 item("dynamicColorHint") {
                     Box(
@@ -304,6 +317,90 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
             Text(stringResource(R.string.setting_theme_page_delete_theme_message))
         }
     )
+}
+
+@Composable
+private fun NastechVisualPresetGallery(
+    selected: String?,
+    onApply: (NastechVisualPreset) -> Unit,
+) {
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surface = glassSurface(GlassSurface.SETTINGS, fallback)
+    val content = glassContentColor(GlassSurface.SETTINGS, fallback)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        color = surface.container,
+        contentColor = content,
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, surface.border),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Nastech visual presets", style = MaterialTheme.typography.titleMedium, color = content)
+            Text(
+                "Choose one card to update chat, cards, navigation, accent color, glass depth, and motion together.",
+                style = MaterialTheme.typography.bodySmall,
+                color = content.copy(alpha = 0.74f),
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                maxItemsInEachRow = 2,
+            ) {
+                NastechVisualPresets.forEach { preset ->
+                    val isSelected = preset.id == selected
+                    val cardTint = Color(preset.glassAppearance.tintArgb)
+                    val accent = Color(preset.glassAppearance.accentArgb ?: preset.glassAppearance.colorFamily.accentArgb)
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .clickable { onApply(preset) },
+                        color = cardTint.copy(alpha = 0.94f),
+                        contentColor = Color(0xFFF5F9FF),
+                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(
+                            if (isSelected) 2.dp else 1.dp,
+                            if (isSelected) accent else Color.White.copy(alpha = 0.20f),
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(7.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(16.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(accent.copy(alpha = 0.86f)),
+                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(preset.title, style = MaterialTheme.typography.titleSmall)
+                                if (isSelected) {
+                                    Icon(HugeIcons.Tick01, contentDescription = "Selected", modifier = Modifier.size(16.dp))
+                                }
+                            }
+                            Text(
+                                preset.description,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFF5F9FF).copy(alpha = 0.72f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

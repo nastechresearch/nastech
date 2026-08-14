@@ -75,52 +75,6 @@ sealed class TTSProviderSetting {
         }
     }
 
-    /**
-     * Downloadable, entirely on-device Kokoro v1.1 voice library. The model files are managed in
-     * app-private storage; this record holds only user preferences, never model URLs or files.
-     *
-     * [provider] accepts `cpu` and `nnapi`. NNAPI requests Android's available GPU/NPU accelerator
-     * where the device and model permit it; the provider safely retries CPU if initialization fails.
-     */
-    @Serializable
-    @SerialName("local-voice-library")
-    data class LocalVoiceLibrary(
-        override var id: Uuid = Uuid.random(),
-        override var name: String = "Local Voice Library",
-        val engineId: String = LocalVoiceEngine.KOKORO_INT8.id,
-        val voiceId: String = "af_maple",
-        val language: String = "en",
-        val speechRate: Float = 1.0f,
-        val provider: String = "cpu",
-    ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting = copy(id = id, name = name)
-    }
-
-    /**
-     * Read-only compatibility record for installations that saved the earlier local Kokoro setting.
-     * [TTSManager] routes it through the new managed short-turn engine and settings rewrite it to
-     * [LocalVoiceLibrary] on the next user edit.
-     */
-    @Deprecated("Migrated to LocalVoiceLibrary")
-    @Serializable
-    @SerialName("kokoro-local")
-    data class KokoroLocal(
-        override var id: Uuid = Uuid.random(),
-        override var name: String = "Kokoro Local",
-        val voiceId: String = "af_maple",
-        val speechRate: Float = 1.0f,
-        val packageId: String = "kokoro-int8-v1_1",
-        val modelVersion: String = "1.1",
-    ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting = copy(id = id, name = name)
-    }
-
     @Serializable
     @SerialName("minimax")
     data class MiniMax(
@@ -334,7 +288,6 @@ sealed class TTSProviderSetting {
                 OpenAI::class,
                 Gemini::class,
                 SystemTTS::class,
-                LocalVoiceLibrary::class,
                 MiniMax::class,
                 Qwen::class,
                 Groq::class,

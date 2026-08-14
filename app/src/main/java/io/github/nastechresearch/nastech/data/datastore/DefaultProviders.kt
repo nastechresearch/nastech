@@ -21,63 +21,15 @@ val DEFAULT_AUTO_MODEL_ID = Uuid.parse("b7055fb4-39f9-4042-a88a-0d80ed76cf08")
 val DEFAULT_CODEX_PROVIDER_ID = Uuid.parse("7ce7e322-b995-4b0c-9d48-42e08dcfcdda")
 val DEFAULT_GROK_PROVIDER_ID = Uuid.parse("8f3e1d20-4b6a-4c9e-a1f2-9d5c7e0b3a44")
 val DEFAULT_GEMINI_OAUTH_PROVIDER_ID = Uuid.parse("2b6c1f84-73ad-4e35-b0c7-1a9e4d5f8c21")
+val DEFAULT_OPENROUTER_PROVIDER_ID = Uuid.parse("d5734028-d39b-4d41-9841-fd648d65440e")
 
 val DEFAULT_PROVIDERS = listOf(
-    ProviderSetting.AICore(
-        // On-device provider sits at the top of the list so the agent's primary surface for
-        // privacy-conscious / offline use is the first thing users see.
-        //
-        // OFF by default. The vast majority of users don't have a Pixel 8/9/10 with the
-        // AICore beta enrolled, and an enabled-but-broken provider at the top of the list
-        // is more confusing than a disabled-but-discoverable one. AICore-eligible users
-        // flip a single toggle on the provider card to turn it on. Existing users who
-        // already had it enabled keep their choice — PreferencesStore's merge only copies
-        // builtIn/description/shortDescription back from the defaults, not enabled.
-        enabled = false,
-        builtIn = true,
-        description = {
-            Text("Runs Gemini Nano on-device through Android AICore. Off by default — flip the switch to enable. Requires AICore beta on a supported Pixel device.")
-        },
-        shortDescription = {
-            Text("On-device — no API key, no network")
-        },
-    ),
-    ProviderSetting.LiteRtLocal(
-        // LiteRT-LM on-device provider. Disabled by default. Settings → Local · LiteRT
-        // shows a curated picker (LiteRtCatalog) with Google AI Edge Gallery's recommended
-        // models — Gemma 4 E2B / Gemma3-1B-IT / Qwen2.5-1.5B / DeepSeek-R1 distill / etc.
-        // — each with the per-model sampler + length defaults Gallery curates for them.
-        // The runtime mirrors Gallery's exact SDK call sequence (engine.initialize() +
-        // maxNumTokens + systemInstruction via ConversationConfig + speculative decoding
-        // probe via Capabilities) so on-device inference behaves the same as Gallery.
-        enabled = false,
-        builtIn = true,
-        description = {
-            Text("Runs .litertlm models on-device via LiteRT-LM. Pick a curated model from Settings → Local · LiteRT (Google AI Edge Gallery's allowlist) — no API key, no network at inference.")
-        },
-        shortDescription = {
-            Text("On-device — LiteRT-LM")
-        },
-    ),
-    ProviderSetting.LlamaCppLocal(
-        // llama.cpp on-device provider. Disabled by default, matching LiteRT above. The
-        // model catalog, settings tile and SAF picker are built in later tasks of the
-        // llama.cpp model-selection plan; for now this only makes the Settings tile exist.
-        enabled = false,
-        builtIn = true,
-        description = {
-            Text("Runs GGUF models on-device via llama.cpp. No API key, no network at inference.")
-        },
-        shortDescription = {
-            Text("On-device - llama.cpp")
-        },
-    ),
     // All built-in providers ship DISABLED by default. New installs start with zero
     // network-egress paths so a freshly-installed app can never make an LLM call (or
     // bill any account) until the user explicitly enables a provider AND adds an API
     // key. Existing users keep their per-provider enabled state — PreferencesStore's
     // merge only re-copies builtIn/description/shortDescription back from defaults,
-    // not enabled (same pattern as the AICore default-off comment above).
+    // not the user-controlled enabled state.
     ProviderSetting.OpenAI(
         id = Uuid.parse("a8d2d463-e8c0-41f2-b89e-f5eb8e716cce"),
         name = "Nastech",
@@ -217,7 +169,35 @@ val DEFAULT_PROVIDERS = listOf(
         )
     ),
     ProviderSetting.OpenAI(
-        id = Uuid.parse("d5734028-d39b-4d41-9841-fd648d65440e"),
+        id = Uuid.parse("f4d44d32-2837-4bc0-972a-41d2f61d523a"),
+        name = "Ollama Cloud",
+        baseUrl = "https://ollama.com/v1",
+        apiKey = "",
+        enabled = false,
+        builtIn = true,
+        description = {
+            Text("Use an Ollama Cloud API key. This remote, OpenAI-compatible route never starts a local Ollama service or downloads a model to your device.")
+        },
+        shortDescription = {
+            Text("Remote Ollama models with your Ollama Cloud key")
+        },
+    ),
+    ProviderSetting.OpenAI(
+        id = Uuid.parse("09163a6e-49be-472a-a469-80cc9bf1f9bb"),
+        name = "OpenCode Zen",
+        baseUrl = "https://opencode.ai/zen/v1",
+        apiKey = "",
+        enabled = false,
+        builtIn = true,
+        description = {
+            Text("Use an OpenCode Zen API key from opencode.ai. Nastech uses the documented cloud catalogue and compatible chat-completions endpoint.")
+        },
+        shortDescription = {
+            Text("Curated cloud coding models, including current free options")
+        },
+    ),
+    ProviderSetting.OpenAI(
+        id = DEFAULT_OPENROUTER_PROVIDER_ID,
         name = "OpenRouter",
         baseUrl = "https://openrouter.ai/api/v1",
         apiKey = "",

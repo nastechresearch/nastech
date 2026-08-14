@@ -21,30 +21,6 @@ data class ProviderRequirement(
          * special required (typical OpenAI / Google / Claude / custom-OpenAI-compatible
          * providers — everything is server-side, just an API key).
          */
-        fun from(provider: ProviderSetting): List<ProviderRequirement> = when (provider) {
-            is ProviderSetting.AICore -> listOf(
-                ProviderRequirement(
-                    label = "Requires AICore beta",
-                    severity = TagType.WARNING,
-                ),
-                ProviderRequirement(
-                    label = "Pixel 8 / 9 / 10",
-                    severity = TagType.INFO,
-                ),
-            )
-            is ProviderSetting.LiteRtLocal -> listOf(
-                ProviderRequirement(
-                    label = "On-device · ~1.5 GB",
-                    severity = TagType.INFO,
-                ),
-            )
-            is ProviderSetting.LlamaCppLocal -> listOf(
-                ProviderRequirement(
-                    label = "On-device · CPU only",
-                    severity = TagType.INFO,
-                ),
-            )
-            else -> emptyList()
-        }
+        fun from(provider: ProviderSetting): List<ProviderRequirement> = emptyList()
     }
 }

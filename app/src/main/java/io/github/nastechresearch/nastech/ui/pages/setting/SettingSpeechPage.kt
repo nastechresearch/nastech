@@ -692,9 +692,9 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
                 }
             )
             DropdownMenuItem(
-                text = { Text("Local Speech Recognition") },
+                text = { Text("ElevenLabs Speech to Text") },
                 onClick = {
-                    currentProvider = ASRProviderSetting.LocalDevice()
+                    currentProvider = ASRProviderSetting.ElevenLabs()
                     showTypeMenu = false
                     showBottomSheet = true
                 }
@@ -834,8 +834,6 @@ private fun TTSProviderItem(
                             is TTSProviderSetting.Gemini -> stringResource(R.string.setting_tts_page_provider_gemini)
                             is TTSProviderSetting.MiniMax -> "MiniMax"
                             is TTSProviderSetting.SystemTTS -> stringResource(R.string.setting_tts_page_provider_system)
-                            is TTSProviderSetting.LocalVoiceLibrary,
-                            is TTSProviderSetting.KokoroLocal -> "Local Voice Library"
                             is TTSProviderSetting.Qwen -> "Qwen"
                             is TTSProviderSetting.Groq -> "Groq"
                             is TTSProviderSetting.XAI -> "xAI"
@@ -982,7 +980,7 @@ private fun ASRProviderItem(
                             is ASRProviderSetting.OpenAIRealtime -> "OpenAI Realtime"
                             is ASRProviderSetting.DashScope -> "DashScope"
                             is ASRProviderSetting.Volcengine -> "Volcengine"
-                            is ASRProviderSetting.LocalDevice -> "Local Speech Recognition"
+                            is ASRProviderSetting.ElevenLabs -> "ElevenLabs Speech to Text"
                             is ASRProviderSetting.MiMo -> "MiMo"
                             is ASRProviderSetting.Step -> "Step"
                         },

@@ -30,7 +30,6 @@ object ToolApprovalDefaults {
         // Shell / arbitrary code execution
         "termux_run_command",
         "termux_session_start",  // opens a persistent interactive shell; the meaningful consent moment
-        "transcribe_audio_file",  // shells out to whisper-cli via Termux; reads arbitrary audio files
         "eval_javascript",
 
         // Shell via Shizuku (shell UID, no root)
@@ -74,7 +73,6 @@ object ToolApprovalDefaults {
         // Privacy / hardware actuation
         "take_photo",
         "record_audio",
-        "speech_to_text",    // activates the microphone + uploads audio to recognizer
         "verify_fingerprint",
         "share",
         "set_torch",

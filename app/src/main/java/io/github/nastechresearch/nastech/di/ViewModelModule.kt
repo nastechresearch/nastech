@@ -101,16 +101,4 @@ val viewModelModule = module {
     viewModelOf(::DoctorViewModel)
     viewModelOf(::SettingBrowserViewModel)
     viewModelOf(::SettingTermuxViewModel)
-
-    // Phase 22A: parameterised by LocalRuntime — one VM instance per provider tile.
-    viewModel<SettingLocalLlmViewModel> { params ->
-        SettingLocalLlmViewModel(
-            runtime = params.get(),
-            context = get(),
-            prefs = get(),
-            httpClient = get(),
-            settingsStore = get(),
-            hfApi = get(),
-        )
-    }
 }

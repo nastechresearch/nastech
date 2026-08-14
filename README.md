@@ -6,7 +6,7 @@
 
 **Your phone, automated.**
 
-An open-source Android LLM agent with 80+ device tools, AI-authored workflows, scheduled jobs, an in-app browser the AI drives, keyless web search, a Linux workspace, SSH, screen automation, file management, music controls, voice transcription, downloadable on-device LLMs, and a remote Telegram bot. Every capability is opt-in.
+An open-source Android AI assistant with 80+ device tools, AI-authored workflows, scheduled jobs, an in-app browser the AI drives, keyless web search, a Linux workspace, SSH, screen automation, file management, music controls, cloud voice transcription, cloud-first model providers, and a remote Telegram bot. Every capability is opt-in.
 
 <p>
   <a href="https://github.com/nastechresearch/nastech/releases"><img src="https://img.shields.io/github/v/release/nastechresearch/nastech?include_prereleases&style=flat-square&label=release&color=blue" alt="Release" /></a>
@@ -60,6 +60,10 @@ Off by default on every assistant, behind Local Tools, Privileged tools. Enablin
 **Workflows** — Describe a trigger and action in plain language: *"when I get home, turn the ringer off."* 19 triggers (WiFi, Bluetooth, headphones, geofence, app launch, notifications, time, charging, screen state, and more) and 14 conditions (battery thresholds, sunrise/sunset, day-of-week, foreground app, screen state) decide when each fires. Receivers register only when needed — battery drain stays minimal.
 
 **Schedules** — Run tasks on any cadence: *"every Monday at 8am"*, *"every two hours"*, *"next Friday at 3pm."* Survives reboots and battery saver. Let the AI think at runtime, or pre-bake fixed actions that don't burn tokens.
+
+### Cloud AI and Voice
+
+Nastech keeps model and voice processing cloud-first. The provider grid includes OpenAI-compatible services, OpenRouter with secure PKCE connection, Ollama Cloud, and OpenCode Zen. The live model catalogue can filter models explicitly published as free. Speech settings keep text-to-speech and speech-to-text separate, including ElevenLabs TTS and ElevenLabs Scribe transcription. No local model download, GPU runtime, or device-hosted provider is required.
 
 ### Telegram Bot
 

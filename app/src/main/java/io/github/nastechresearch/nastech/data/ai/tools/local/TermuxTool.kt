@@ -173,7 +173,7 @@ internal suspend fun runCommandCapture(
     // listener uses this signal to suppress Termux's foreground-service notification
     // updates (the "0 sessions, N tasks" pill) from auto-forwarding to Telegram while
     // the agent is actively running shell commands. Without this, every internal
-    // runCommandCapture (whisper_status, transcribe_audio_file, etc.) makes Termux
+    // runCommandCapture preserves command output for safe caller-side parsing.
     // flap its notification and the listener forwards each flap to the user's chat.
     // The touch here covers ALL callers of runCommandCapture, so individual tool
     // factories don't have to remember to call it themselves.

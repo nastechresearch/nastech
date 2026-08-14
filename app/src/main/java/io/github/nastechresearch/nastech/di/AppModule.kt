@@ -78,6 +78,7 @@ val appModule = module {
     // DoctorChecks read it. No cross-dependencies, so no DI-cycle risk.
     single { io.github.nastechresearch.nastech.data.telegram.TelegramPollStallTracker() }
     single { NotificationListenerPreferences(get()) }
+    single { io.github.nastechresearch.nastech.data.openrouter.OpenRouterOAuthManager(get(), get()) }
 
     // Phase 13: External Automation Intent API
     single { io.github.nastechresearch.nastech.automation.ExternalAutomationConfig(get()) }
@@ -225,15 +226,7 @@ val appModule = module {
     }
 
     single {
-        me.rerere.tts.kokoro.KokoroPackageManager(get())
-    }
-
-    single {
-        me.rerere.asr.LocalAsrPackageManager(get())
-    }
-
-    single {
-        TTSManager(get(), get())
+        TTSManager(get())
     }
 
     single {
@@ -243,11 +236,6 @@ val appModule = module {
     single {
         AILoggingManager(get(), get())
     }
-
-    // Phase 22A: Local-LLM on-device providers
-    single { me.rerere.locallm.LocalRuntimePreferences(get()) }
-    single { me.rerere.locallm.litert.LiteRtRuntime(get()) }
-    single { me.rerere.llamacpp.LlamaCppRuntime() }
 
     single {
         ChatService(
@@ -296,9 +284,6 @@ val appModule = module {
             browserPreferences = get(),
             // Phase 25: surface the SAF granted-directories live count.
             storageVolumeGrantStore = get(),
-            // LiteRT accelerator status row in the Doctor: shows the persisted backend
-            // decision so a silent GPU -> CPU fallback is visible.
-            localRuntimePreferences = get(),
             // Doctor refresh: skills.* and service.mcp_servers rows.
             skillManager = get(),
             mcpManager = get(),

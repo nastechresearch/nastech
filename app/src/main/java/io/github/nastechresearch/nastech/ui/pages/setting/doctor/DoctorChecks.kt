@@ -67,7 +67,6 @@ private object Capability {
     )
     val Termux: Set<LocalToolOption> = setOf(
         LocalToolOption.Termux,
-        LocalToolOption.SpeechToText,        // transcribe_audio_file uses Termux + whisper.cpp
         LocalToolOption.Ssh,                 // ssh_exec calls into termux ssh
     )
     val BatteryWhitelist: Set<LocalToolOption> = setOf(
@@ -119,7 +118,6 @@ private fun LocalToolOption.shortName(): String = when (this) {
     LocalToolOption.NotificationListener -> "Notification listener"
     LocalToolOption.ScreenAutomation -> "Screen automation"
     LocalToolOption.Termux -> "Termux"
-    LocalToolOption.SpeechToText -> "Speech-to-text"
     LocalToolOption.Ssh -> "SSH"
     LocalToolOption.TelegramBot -> "Telegram bot"
     LocalToolOption.CronJobs -> "Cron jobs"
@@ -165,10 +163,6 @@ class DoctorChecks(
     // Phase 25 — SAF tree-grant store, backs the "granted directories" Doctor row.
     // Nullable + defaulted so legacy test paths that don't build the full DI graph compile.
     private val storageVolumeGrantStore: io.github.nastechresearch.nastech.data.storage.StorageVolumeGrantStore? = null,
-    // Surface the persisted LiteRT accelerator decision so the user can see whether their
-    // local models actually engaged GPU/NPU or silently fell back to CPU.
-    // Nullable + defaulted same as the others above for legacy test path compatibility.
-    private val localRuntimePreferences: me.rerere.locallm.LocalRuntimePreferences? = null,
     // Doctor refresh: backs the skills.* rows. Nullable + defaulted same as the others.
     private val skillManager: SkillManager? = null,
     // Doctor refresh: backs the service.mcp_servers row. Nullable + defaulted same as the others.
@@ -863,17 +857,10 @@ class DoctorChecks(
                     is me.rerere.ai.provider.ProviderSetting.OpenAI -> p.apiKey.isNotBlank()
                     is me.rerere.ai.provider.ProviderSetting.Google -> p.apiKey.isNotBlank()
                     is me.rerere.ai.provider.ProviderSetting.Claude -> p.apiKey.isNotBlank()
-                    is me.rerere.ai.provider.ProviderSetting.AICore -> p.enabled  // on-device, no API key
-                    // Local provider (LiteRT): usable when enabled AND at least one model has
-                    // been loaded/downloaded. A disabled provider with no models is the factory
-                    // default — don't count it.
-                    is me.rerere.ai.provider.ProviderSetting.LiteRtLocal -> p.enabled && p.models.isNotEmpty()
-                    // Local provider (llama.cpp): usable when enabled AND at least one model
-                    // has been loaded, same criterion as LiteRT above.
-                    is me.rerere.ai.provider.ProviderSetting.LlamaCppLocal -> p.enabled && p.models.isNotEmpty()
                     is me.rerere.ai.provider.ProviderSetting.Codex -> p.enabled  // OAuth, no API key
                     is me.rerere.ai.provider.ProviderSetting.Grok -> p.enabled  // OAuth, no API key
                     is me.rerere.ai.provider.ProviderSetting.GeminiOAuth -> p.enabled  // OAuth, no API key
+                    else -> false // retired provider records are removed during settings migration
                 }
             }
             add(
@@ -881,154 +868,11 @@ class DoctorChecks(
                     id = "net.providers",
                     category = DoctorCategory.Network,
                     label = "LLM providers configured",
-                    detail = "$configured provider(s) configured (API key set, AICore enabled, or local model loaded) out of ${provs.size} total.",
+                    detail = "$configured cloud provider(s) configured (API key or OAuth connection set) out of ${provs.size} total.",
                     severity = if (configured > 0) Severity.OK else Severity.WARN,
                     fix = FixAction.OpenAppRoute("Open Providers", AppRouteKey.SettingProvider),
                 )
             )
-        }
-        // LiteRT accelerator status. The runtime's GPU -> CPU fallback is silent today:
-        // if the device's OpenCL/OpenGL delegate fails to init (e.g. MLDrift's
-        // "CreateSharedMemoryManager is not implemented" on some Adreno drivers), the
-        // model loads on CPU and the user has no UI indication. LiteRtProvider now
-        // persists the actually-chosen accelerator after every load; surface that here
-        // so the user can confirm GPU is engaged.
-        runCatching {
-            val prefs = localRuntimePreferences
-            if (prefs != null) {
-                val accel = prefs.acceleratorFlow(me.rerere.locallm.LocalRuntime.LiteRT).first()
-                val forceCpu = prefs.forceCpu(me.rerere.locallm.LocalRuntime.LiteRT)
-                val detail = when {
-                    accel == null -> "Not probed yet. The accelerator is decided on the first model load."
-                    forceCpu && accel == "CPU" ->
-                        "CPU (Try-GPU toggle off in Settings -> Local LiteRT). " +
-                            "Flip it on to retry the device's GPU on the next load."
-                    accel == "CPU" ->
-                        "CPU (fallback: the GPU delegate failed to initialise on this device, " +
-                            "likely an MLDrift issue. Tap 'Re-detect' in Settings -> Local LiteRT " +
-                            "to retry with a fresh probe.)"
-                    accel == "GPU" -> "GPU (OpenCL or OpenGL, picked by LiteRT's internal probe)."
-                    accel == "QNN" || accel == "NPU" -> "NPU (Qualcomm QNN delegate)."
-                    accel == "NNAPI" -> "NNAPI."
-                    else -> "Backend label: $accel"
-                }
-                val severity = when {
-                    accel == null -> Severity.INFO
-                    accel == "CPU" && !forceCpu -> Severity.WARN  // unexpected fallback
-                    else -> Severity.OK
-                }
-                add(
-                    DoctorCheck(
-                        id = "net.litert_accel",
-                        category = DoctorCategory.Network,
-                        label = "LiteRT accelerator",
-                        detail = detail,
-                        severity = severity,
-                        fix = FixAction.OpenAppRoute(
-                            "Open Local LiteRT",
-                            AppRouteKey.SettingProvider,
-                        ),
-                    )
-                )
-                // Performance telemetry — surface the last-known prefill/decode tok/s for
-                // each model so the user (and the support team triaging a slow report)
-                // can see at a glance whether the runtime is hitting expected rates. We
-                // INFO when present; WARN never (the model could legitimately be slow on a
-                // weak device — the user knows their hardware better than we do).
-                val perfMap = prefs.perfTelemetryFlow(me.rerere.locallm.LocalRuntime.LiteRT).first()
-                if (perfMap.isNotEmpty()) {
-                    val rows = perfMap.values.sortedByDescending { it.sampledAtMs }
-                    val detail = rows.joinToString("\n") { s ->
-                        val spec = if (s.specDecodingEngaged) ", MTP on" else ""
-                        "${s.modelId}: prefill ${"%.1f".format(s.prefillTps)} tok/s, " +
-                            "decode ${"%.1f".format(s.decodeTps)} tok/s$spec"
-                    }
-                    add(
-                        DoctorCheck(
-                            id = "net.litert_perf",
-                            category = DoctorCategory.Network,
-                            label = "LiteRT performance",
-                            detail = "Last-known per-model rates (character-based estimate, " +
-                                "~10% accurate for English text):\n$detail",
-                            severity = Severity.INFO,
-                            fix = FixAction.OpenAppRoute(
-                                "Open Local LiteRT",
-                                AppRouteKey.SettingProvider,
-                            ),
-                        )
-                    )
-                }
-                // Vision-encoder availability — surface any models the runtime had to drop
-                // to text-only on this device's GPU. The provider's vision-CPU fallback
-                // means a multimodal model still works for chat, but the user has lost
-                // image input on this chip. Most common cause: Adreno 7xx + restrictive
-                // OEM linker namespace (One UI / OriginOS) hitting upstream LiteRT-LM
-                // issue #2292 (gpu_backend_opengl.cc:CreateSharedMemoryManager UNIMPLEMENTED).
-                val visionUnavailable = prefs
-                    .visionUnavailableFlow(me.rerere.locallm.LocalRuntime.LiteRT).first()
-                if (visionUnavailable.isNotEmpty()) {
-                    add(
-                        DoctorCheck(
-                            id = "net.litert_vision",
-                            category = DoctorCategory.Network,
-                            label = "LiteRT vision encoder",
-                            detail = "Vision encoder unavailable on this device for: " +
-                                visionUnavailable.joinToString(", ") +
-                                ". These multimodal models run in text-only mode — chat works, " +
-                                "image inputs don't. Often fixed by a future LiteRT-LM SDK update " +
-                                "(the OpenGL fallback path's CreateSharedMemoryManager is " +
-                                "currently UNIMPLEMENTED upstream). Tap 'Re-try vision' next to " +
-                                "the model in Settings -> Local LiteRT after a GPU driver update " +
-                                "to clear the flag.",
-                            severity = Severity.WARN,
-                            fix = FixAction.OpenAppRoute(
-                                "Open Local LiteRT",
-                                AppRouteKey.SettingProvider,
-                            ),
-                        )
-                    )
-                }
-            }
-        }
-        // llama.cpp installed-model check. Unlike LiteRT, this runtime is CPU-only with no
-        // vision encoder and nothing to probe for an accelerator, so there is no analogue
-        // to net.litert_accel/_perf/_vision here — those would be reporting on things that
-        // cannot vary on this build. The one thing that genuinely can go wrong: a model
-        // registered in prefs whose backing file was moved, deleted, or lives on a volume
-        // that got unmounted. Own id (net.llamacpp_models) so it can't collide with the
-        // net.litert_* rows above.
-        runCatching {
-            val prefs = localRuntimePreferences
-            if (prefs != null) {
-                val installed = prefs.installedModels(me.rerere.locallm.LocalRuntime.LlamaCpp)
-                val status = llamaCppModelStatus(installed)
-                val detail = when {
-                    status.total == 0 -> "No llama.cpp models installed."
-                    status.missing.isEmpty() ->
-                        "${status.total} model(s) installed, all present on disk."
-                    else ->
-                        "${status.missing.size} of ${status.total} installed llama.cpp model(s) " +
-                            "missing from disk: ${status.missing.joinToString(", ")}. The file may " +
-                            "have been moved, deleted, or its storage volume unmounted."
-                }
-                add(
-                    DoctorCheck(
-                        id = "net.llamacpp_models",
-                        category = DoctorCategory.Network,
-                        label = "llama.cpp models",
-                        detail = detail,
-                        severity = when {
-                            status.total == 0 -> Severity.INFO
-                            status.missing.isEmpty() -> Severity.OK
-                            else -> Severity.WARN
-                        },
-                        fix = if (status.missing.isNotEmpty()) FixAction.OpenAppRoute(
-                            "Open Local llama.cpp",
-                            AppRouteKey.SettingProvider,
-                        ) else null,
-                    )
-                )
-            }
         }
         // DNS sanity — confirms the OkHttp clients aren't stuck on a stale resolver.
         val dnsOk = withTimeoutOrNull(2_500L) {
@@ -1614,93 +1458,3 @@ class DoctorChecks(
         }
     }
 }
-
-/**
- * Pure decision logic backing the "net.llamacpp_models" row: given the filename ->
- * absolute-path map from [me.rerere.locallm.LocalRuntimePreferences.installedModels],
- * report the total installed count and which filenames' backing file is no longer on
- * disk. Extracted to a top-level function (rather than left inline) so it's unit-testable
- * on the JVM without an Android Context — [DoctorChecks] itself needs one for every other
- * check, which rules out constructing it directly in a plain JUnit test.
- */
-internal data class LlamaCppModelStatus(val total: Int, val missing: List<String>)
-
-internal fun llamaCppModelStatus(installed: Map<String, String>): LlamaCppModelStatus =
-    LlamaCppModelStatus(
-        total = installed.size,
-        missing = installed.filterValues { path -> !File(path).exists() }.keys.sorted(),
-    )
-
-/**
- * Pure decision logic backing the "storage.gallery_orphans" row: given the resolved
- * absolute paths of every generated-image DB record, report the total and how many no
- * longer have a backing file on disk (the #39 bug class). Mirrors [llamaCppModelStatus]'s
- * shape so both are unit-testable on the JVM without a Context.
- */
-internal data class GalleryOrphanStatus(val total: Int, val orphanCount: Int)
-
-internal fun galleryOrphanStatus(absolutePaths: List<String>): GalleryOrphanStatus =
-    GalleryOrphanStatus(
-        total = absolutePaths.size,
-        orphanCount = absolutePaths.count { path -> !File(path).exists() },
-    )
-
-/**
- * Pure decision logic backing the "assistant.subagent_profiles" row: which configured
- * [SubAgentProfile]s have a `modelId` that no longer resolves to a chat model of an
- * enabled provider (the #28 failure class; it used to fail silently at dispatch time).
- * Reuses [SubAgentModelResolver.resolve] itself rather than re-deriving model lookup; a
- * profile's `modelId` is already a resolved [kotlin.uuid.Uuid], so it's passed through as
- * the resolver's string input, exactly like a `subagent_dispatch` caller would.
- */
-internal data class SubAgentProfileStatus(val total: Int, val broken: List<String>)
-
-internal fun subAgentProfileStatus(
-    profiles: List<SubAgentProfile>,
-    providers: List<ProviderSetting>,
-): SubAgentProfileStatus = SubAgentProfileStatus(
-    total = profiles.size,
-    broken = profiles.filter { profile ->
-        val modelId = profile.modelId ?: return@filter false
-        SubAgentModelResolver.resolve(modelId.toString(), providers) is SubAgentModelResolver.Result.Failed
-    }.map { it.name },
-)
-
-/**
- * Pure decision logic backing the "service.mcp_servers" row: given each configured
- * server's (name, enabled, connected) triple, report the configured/enabled/connected
- * counts and which enabled servers are not currently connected.
- */
-internal data class McpServerSummary(
-    val configured: Int,
-    val enabled: Int,
-    val connected: Int,
-    val enabledNotConnected: List<String>,
-)
-
-internal fun mcpServerSummary(servers: List<Triple<String, Boolean, Boolean>>): McpServerSummary =
-    McpServerSummary(
-        configured = servers.size,
-        enabled = servers.count { (_, enabled, _) -> enabled },
-        connected = servers.count { (_, _, connected) -> connected },
-        enabledNotConnected = servers.filter { (_, enabled, connected) -> enabled && !connected }
-            .map { (name, _, _) -> name },
-    )
-
-/**
- * Pure decision logic backing the "skills.seed" row: a bundled skill's on-disk
- * `.core-bundled-hash` sentinel is stale when it's missing, unreadable, or doesn't match
- * the hash of what the app would currently seed. Non-bundled (user-added) entries are
- * never flagged: [isBundled] gates them out entirely, mirroring
- * [io.github.nastechresearch.nastech.data.files.decideSeedAction]'s "never touch a directory we didn't
- * create" rule.
- */
-internal data class SkillSeedEntry(
-    val name: String,
-    val isBundled: Boolean,
-    val storedHash: String?,
-    val currentHash: String?,
-)
-
-internal fun staleSeedSkillNames(entries: List<SkillSeedEntry>): List<String> =
-    entries.filter { it.isBundled && it.storedHash != it.currentHash }.map { it.name }

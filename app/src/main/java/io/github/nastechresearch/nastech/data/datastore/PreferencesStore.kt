@@ -22,7 +22,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonPrimitive
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.core.ReasoningLevel
 import me.rerere.ai.provider.Model
@@ -73,6 +75,26 @@ const val DEFAULT_CONTEXT_COMPACTION_TARGET_PERCENT = 1
 
 private const val TAG = "PreferencesStore"
 
+private val retiredLocalProviderTypeNames = setOf("aicore", "local_litert", "local_llamacpp")
+private val retiredLocalTtsTypeNames = setOf("local-voice-library", "kokoro-local")
+private val retiredLocalAsrTypeNames = setOf("local-device")
+
+/**
+ * Removes retired on-device provider records before polymorphic decoding. This keeps existing cloud
+ * records usable after the cloud-first migration without retaining local runtime setting types.
+ */
+private fun stripRetiredProviderRecords(raw: String, retiredTypeNames: Set<String>): String = runCatching {
+    val values = JsonInstant.parseToJsonElement(raw) as? JsonArray
+    if (values == null) {
+        raw
+    } else {
+        val filtered = values.filterNot { item ->
+            (item as? JsonObject)?.get("type")?.jsonPrimitive?.content in retiredTypeNames
+        }
+        JsonInstant.encodeToString(JsonArray(filtered))
+    }
+}.getOrDefault(raw)
+
 /**
  * Per-entry tolerant decode for the persisted `providers` list.
  *
@@ -80,14 +102,13 @@ private const val TAG = "PreferencesStore"
  * polymorphic [ProviderSetting] entries. A single-shot `decodeFromString<List<ProviderSetting>>`
  * throws on the entire list as soon as one element has an unknown polymorphic discriminator.
  *
- * Concrete trigger that motivated this: the never-shipped Phase-22A scaffolding seeded a
- * `"type":"local_llamacpp"` entry into DEFAULT_PROVIDERS for early test installs. Deleting
- * the `LlamaCppLocal` subclass would otherwise make decode-of-list throw on those entries
- * → user loses ALL their saved providers (API keys, custom models, the lot).
+ * Concrete trigger that motivated this: an earlier build could persist retired on-device
+ * provider discriminators. Removing those runtime classes must not cause a list decode failure
+ * that would discard the user's saved cloud providers, API keys, or custom models.
  *
- * Per-entry decode lets surviving entries land while the unknown one is logged and skipped.
- * Keep this even though `local_llamacpp` now ships: it's good hygiene for any future
- * polymorphic schema change (renamed types, removed types, etc).
+ * Per-entry decode lets surviving entries land while an unknown or retired entry is logged and
+ * skipped. Keep this as hygiene for future polymorphic schema changes such as renamed or removed
+ * cloud provider types.
  */
 private fun decodeProvidersTolerant(raw: String): List<ProviderSetting> {
     if (raw.isBlank()) return emptyList()
@@ -95,7 +116,10 @@ private fun decodeProvidersTolerant(raw: String): List<ProviderSetting> {
         JsonInstant.parseToJsonElement(raw) as? JsonArray
     }.getOrNull() ?: return emptyList()
     return array.mapNotNull { element ->
-        try {
+        val typeName = (element as? JsonObject)?.get("type")?.jsonPrimitive?.content
+        if (typeName in retiredLocalProviderTypeNames) {
+            null
+        } else try {
             JsonInstant.decodeFromJsonElement<ProviderSetting>(element)
         } catch (e: SerializationException) {
             Log.w(TAG, "Skipping unrecognised provider entry during decode: ${e.message}")
@@ -364,7 +388,11 @@ class SettingsStore(
                     }
                 } ?: S3Config(),
                 ttsProviders = preferences[TTS_PROVIDERS]?.let { raw ->
-                    runCatching { JsonInstant.decodeFromString<List<TTSProviderSetting>>(raw) }.getOrElse {
+                    runCatching {
+                        JsonInstant.decodeFromString<List<TTSProviderSetting>>(
+                            stripRetiredProviderRecords(raw, retiredLocalTtsTypeNames),
+                        )
+                    }.getOrElse {
                         Log.w(TAG, "Failed to decode ttsProviders, using default", it)
                         emptyList()
                     }
@@ -373,7 +401,11 @@ class SettingsStore(
                     ?: DEFAULT_SYSTEM_TTS_ID,
                 defaultTTSPlaybackSpeed = preferences[DEFAULT_TTS_PLAYBACK_SPEED]?.coerceIn(0.5f, 2.0f) ?: 1.0f,
                 asrProviders = preferences[ASR_PROVIDERS]?.let { raw ->
-                    runCatching { JsonInstant.decodeFromString<List<ASRProviderSetting>>(raw) }.getOrElse {
+                    runCatching {
+                        JsonInstant.decodeFromString<List<ASRProviderSetting>>(
+                            stripRetiredProviderRecords(raw, retiredLocalAsrTypeNames),
+                        )
+                    }.getOrElse {
                         Log.w(TAG, "Failed to decode asrProviders, using default", it)
                         emptyList()
                     }
@@ -425,40 +457,10 @@ class SettingsStore(
             var providers = it.providers.ifEmpty {
                 DEFAULT_PROVIDERS.filter { p -> p.id !in deletedDefaultIds }
             }.toMutableList()
-            // For existing installs that pre-date the on-device AICore provider being
-            // promoted to first-place, hoist it to the top so the user does not have to
-            // scroll past every legacy aggregator to find it.
-            val aicoreIndex = providers.indexOfFirst { it is ProviderSetting.AICore }
-            if (aicoreIndex > 0) {
-                val aicoreRow = providers.removeAt(aicoreIndex)
-                providers.add(0, aicoreRow)
-            }
             DEFAULT_PROVIDERS.forEach { defaultProvider ->
                 if (defaultProvider.id in deletedDefaultIds) return@forEach
                 if (providers.none { it.id == defaultProvider.id }) {
-                    // On-device built-in providers (AICore, LiteRT) are pinned to the top of
-                    // the list in the order they appear in DEFAULT_PROVIDERS. Remote provider
-                    // defaults continue to append at the end so existing users see no
-                    // reordering of their configured remote providers.
-                    when (defaultProvider) {
-                        is ProviderSetting.AICore -> providers.add(0, defaultProvider.copyProvider())
-                        is ProviderSetting.LiteRtLocal -> {
-                            // Insert right after AICore, or at 0 if AICore is absent.
-                            // indexOfFirst returns -1 when absent; -1 + 1 = 0, so insert at 0.
-                            val insertAt = providers.indexOfFirst { it is ProviderSetting.AICore } + 1
-                            providers.add(insertAt, defaultProvider.copyProvider())
-                        }
-                        is ProviderSetting.LlamaCppLocal -> {
-                            // Insert right after LiteRtLocal, so it groups with the other
-                            // on-device provider instead of appending after every remote
-                            // provider below. Falls back to right after AICore, or 0, if
-                            // LiteRtLocal is absent - same absent-index fallback as above.
-                            val insertAt = providers.indexOfFirst { it is ProviderSetting.LiteRtLocal }
-                                .let { if (it >= 0) it + 1 else providers.indexOfFirst { p -> p is ProviderSetting.AICore } + 1 }
-                            providers.add(insertAt, defaultProvider.copyProvider())
-                        }
-                        else -> providers.add(defaultProvider.copyProvider())
-                    }
+                    providers.add(defaultProvider.copyProvider())
                 }
             }
             providers = providers.map { provider ->
@@ -535,6 +537,7 @@ class SettingsStore(
             val validModeInjectionIds = settings.modeInjections.map { it.id }.toSet()
             val validLorebookIds = settings.lorebooks.map { it.id }.toSet()
             val validQuickMessageIds = settings.quickMessages.map { it.id }.toSet()
+            val ttsProviders = settings.ttsProviders.distinctBy { it.id }
             val asrProviders = settings.asrProviders.distinctBy { it.id }
             settings.copy(
                 providers = settings.providers.distinctBy { it.id }.map { provider ->
@@ -551,17 +554,6 @@ class SettingsStore(
                             models = provider.models.distinctBy { model -> model.id }
                         )
 
-                        is ProviderSetting.AICore -> provider.copy(
-                            models = provider.models.distinctBy { model -> model.id }
-                        )
-
-                        is ProviderSetting.LiteRtLocal -> provider.copy(
-                            models = provider.models.distinctBy { model -> model.id }
-                        )
-
-                        is ProviderSetting.LlamaCppLocal -> provider.copy(
-                            models = provider.models.distinctBy { model -> model.id }
-                        )
 
                         is ProviderSetting.Codex -> provider.copy(
                             models = provider.models.distinctBy { model -> model.id }
@@ -597,7 +589,11 @@ class SettingsStore(
                         }.toSet()
                     )
                 },
-                ttsProviders = settings.ttsProviders.distinctBy { it.id },
+                ttsProviders = ttsProviders,
+                selectedTTSProviderId = settings.selectedTTSProviderId
+                    .takeIf { id -> ttsProviders.any { provider -> provider.id == id } }
+                    ?: ttsProviders.firstOrNull()?.id
+                    ?: DEFAULT_SYSTEM_TTS_ID,
                 asrProviders = asrProviders,
                 selectedASRProviderId = settings.selectedASRProviderId
                     ?.takeIf { id -> asrProviders.any { provider -> provider.id == id } }
@@ -1169,7 +1165,6 @@ internal val DEFAULT_ASSISTANTS = listOf(
             LocalToolOption.StorageInfo,
             LocalToolOption.Download,
             LocalToolOption.MediaScanner,
-            LocalToolOption.SpeechToText,
             LocalToolOption.Share,
             LocalToolOption.Files,
             LocalToolOption.Browser,

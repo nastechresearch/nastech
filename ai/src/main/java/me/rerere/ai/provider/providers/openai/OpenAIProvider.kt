@@ -116,11 +116,14 @@ class OpenAIProvider(
                 error("Failed to get models: response has no `data` field")
             }
 
-            val isOpenRouter = providerSetting.baseUrl.contains("openrouter.ai", ignoreCase = true)
+            val usesRichCatalogMetadata = providerSetting.baseUrl.contains("openrouter.ai", ignoreCase = true) ||
+                providerSetting.baseUrl.contains("opencode.ai/zen", ignoreCase = true)
             data.mapNotNull { modelJson ->
                 val modelObj = modelJson.jsonObject
-                if (isOpenRouter) {
-                    // Rich capability + pricing detection from OpenRouter's catalog.
+                if (usesRichCatalogMetadata) {
+                    // OpenRouter and OpenCode Zen both publish model metadata that includes
+                    // capabilities and pricing. Preserve it so the settings UI can identify
+                    // current zero-cost models without a hard-coded catalogue.
                     openRouterModelFromJson(modelObj)
                 } else {
                     val id = modelObj["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null

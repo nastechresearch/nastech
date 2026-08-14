@@ -12,6 +12,12 @@ import me.rerere.hugeicons.stroke.Cancel01
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -33,6 +39,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -70,7 +77,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalScrollCaptureInProgress
@@ -108,6 +118,83 @@ import kotlin.uuid.Uuid
 private const val TAG = "ChatList"
 private const val LoadingIndicatorKey = "LoadingIndicator"
 private const val ScrollBottomKey = "ScrollBottomKey"
+
+@Composable
+private fun BreathingThinkingOrb() {
+    val transition = rememberInfiniteTransition(label = "thinking-orb")
+    val scale by transition.animateFloat(
+        initialValue = 0.72f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1_100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "thinking-orb-scale",
+    )
+    val alpha by transition.animateFloat(
+        initialValue = 0.48f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1_100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "thinking-orb-alpha",
+    )
+    Box(
+        modifier = Modifier
+            .size(14.dp)
+            .scale(scale)
+            .alpha(alpha)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary),
+    )
+}
+
+@Composable
+private fun BoxScope.LongThinkingStarlightBackdrop() {
+    val transition = rememberInfiniteTransition(label = "thinking-starlight")
+    val shimmer by transition.animateFloat(
+        initialValue = 0.16f,
+        targetValue = 0.52f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2_100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "thinking-starlight-alpha",
+    )
+    Box(
+        modifier = Modifier
+            .matchParentSize()
+            .clip(RoundedCornerShape(18.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.13f),
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                    ),
+                ),
+            ),
+    ) {
+        listOf(
+            Alignment.TopStart to 0.25f,
+            Alignment.TopCenter to 0.45f,
+            Alignment.TopEnd to 0.32f,
+            Alignment.BottomStart to 0.4f,
+            Alignment.BottomCenter to 0.22f,
+            Alignment.BottomEnd to 0.5f,
+        ).forEach { (alignment, intensity) ->
+            Box(
+                modifier = Modifier
+                    .align(alignment)
+                    .padding(10.dp)
+                    .size(3.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = shimmer * intensity)),
+            )
+        }
+    }
+}
 
 @Composable
 fun ChatList(
@@ -388,24 +475,39 @@ private fun ChatListNormal(
 
             if (loading) {
                 item(LoadingIndicatorKey) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    var thinkingStartedAt by remember { mutableStateOf(System.currentTimeMillis()) }
+                    var thinkingElapsedMillis by remember { mutableStateOf(0L) }
+                    LaunchedEffect(loading) {
+                        thinkingStartedAt = System.currentTimeMillis()
+                        while (loading) {
+                            thinkingElapsedMillis = System.currentTimeMillis() - thinkingStartedAt
+                            delay(1_000)
+                        }
+                    }
+                    val longThinking = thinkingElapsedMillis >= 60_000L
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
                     ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-                        )
-                        Text(
-                            text = processingStatus?.takeIf { it.isNotBlank() } ?: stringResource(R.string.notification_live_update_chip_thinking),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (longThinking) {
+                            LongThinkingStarlightBackdrop()
+                        }
+                        Row(
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            BreathingThinkingOrb()
+                            Text(
+                                text = processingStatus?.takeIf { it.isNotBlank() }
+                                    ?: if (longThinking) "Thinking deeply…" else stringResource(R.string.notification_live_update_chip_thinking),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }

@@ -337,29 +337,9 @@ val dataSourceModule = module {
     }
 
     single {
-        val settingsStore: io.github.nastechresearch.nastech.data.datastore.SettingsStore = get()
         val codexRepository: CodexAccountRepository = get()
         val json: Json = get()
         ProviderManager(client = get(), context = get()).also { pm ->
-            pm.registerProvider(
-                "local_litert",
-                me.rerere.locallm.litert.LiteRtProvider(
-                    context = get(),
-                    runtime = get(),
-                    prefs = get(),
-                    settingsUpdater = { transform ->
-                        settingsStore.update { old -> old.copy(providers = transform(old.providers)) }
-                    },
-                ),
-            )
-            pm.registerProvider(
-                "local_llamacpp",
-                me.rerere.llamacpp.LlamaCppProvider(
-                    context = get(),
-                    runtime = get(),
-                    prefs = get(),
-                ),
-            )
             pm.registerProvider(
                 "codex",
                 CodexProvider(

@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,19 +63,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dokar.sonner.ToastType
 import me.rerere.ai.provider.ClaudePromptCacheTtl
 import me.rerere.ai.provider.ProviderSetting
-import me.rerere.llamacpp.LlamaCppCatalog
-import me.rerere.llamacpp.LlamaCppCatalogEntry
-import me.rerere.locallm.LocalRuntime
-import me.rerere.locallm.litert.LiteRtCatalog
-import me.rerere.locallm.litert.LiteRtCatalogEntry
 import io.github.nastechresearch.nastech.R
-import io.github.nastechresearch.nastech.data.api.HuggingFaceModelSearch
+import io.github.nastechresearch.nastech.data.openrouter.OpenRouterOAuthManager
+import io.github.nastechresearch.nastech.data.openrouter.OpenRouterOAuthStatus
 import io.github.nastechresearch.nastech.data.datastore.DEFAULT_PROVIDERS
 import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import me.rerere.hugeicons.stroke.View
 import me.rerere.hugeicons.stroke.ViewOff
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
-import io.github.nastechresearch.nastech.ui.pages.setting.locallm.SettingLocalLlmViewModel
 import io.github.nastechresearch.nastech.ui.theme.JetbrainsMono
 import io.github.nastechresearch.nastech.ui.theme.glassContentColor
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -82,8 +78,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.koin.androidx.compose.koinViewModel
-import org.koin.core.parameter.parametersOf
+import org.koin.compose.koinInject
 import kotlin.reflect.KClass
 
 @Composable
@@ -130,18 +125,6 @@ fun ProviderConfigure(
                     ProviderConfigureClaude(provider, onEdit)
                 }
 
-                is ProviderSetting.AICore -> {
-                    ProviderConfigureAICore(provider, onEdit)
-                }
-
-                is ProviderSetting.LiteRtLocal -> {
-                    ProviderConfigureLiteRT(provider, onEdit)
-                }
-
-                is ProviderSetting.LlamaCppLocal -> {
-                    ProviderConfigureLlamaCpp(provider, onEdit)
-                }
-
                 is ProviderSetting.Codex -> Unit
                 is ProviderSetting.Grok -> Unit
                 is ProviderSetting.GeminiOAuth -> Unit
@@ -157,29 +140,24 @@ fun ProviderSetting.convertTo(type: KClass<out ProviderSetting>): ProviderSettin
         is ProviderSetting.OpenAI -> this.apiKey
         is ProviderSetting.Google -> this.apiKey
         is ProviderSetting.Claude -> this.apiKey
-        is ProviderSetting.AICore -> "" // on-device, no API key
-        is ProviderSetting.LiteRtLocal -> "" // on-device, no API key
-        is ProviderSetting.LlamaCppLocal -> "" // on-device, no API key
         is ProviderSetting.Codex -> "" // OAuth, no API key
         is ProviderSetting.Grok -> "" // OAuth, no API key
         is ProviderSetting.GeminiOAuth -> "" // OAuth, no API key
+        else -> "" // retired provider record; migration removes it on load
     }
     val sourceBaseUrl = when (this) {
         is ProviderSetting.OpenAI -> this.baseUrl
         is ProviderSetting.Google -> this.baseUrl
         is ProviderSetting.Claude -> this.baseUrl
-        is ProviderSetting.AICore -> "" // on-device, no base URL
-        is ProviderSetting.LiteRtLocal -> "" // on-device, no base URL
-        is ProviderSetting.LlamaCppLocal -> "" // on-device, no base URL
         is ProviderSetting.Codex -> "" // OAuth, no base URL
         is ProviderSetting.Grok -> "" // OAuth, no base URL
         is ProviderSetting.GeminiOAuth -> "" // OAuth, no base URL
+        else -> "" // retired provider record; migration removes it on load
     }
     val targetDefaultBaseUrl = when (type) {
         ProviderSetting.OpenAI::class -> ProviderSetting.OpenAI().baseUrl
         ProviderSetting.Google::class -> ProviderSetting.Google().baseUrl
         ProviderSetting.Claude::class -> ProviderSetting.Claude().baseUrl
-        ProviderSetting.AICore::class -> ""
         else -> error("Unsupported provider type: $type")
     }
     val convertedBaseUrl = sourceBaseUrl.convertToTargetBaseUrl(targetDefaultBaseUrl)
@@ -204,16 +182,6 @@ fun ProviderSetting.convertTo(type: KClass<out ProviderSetting>): ProviderSettin
             apiKey = apiKey, baseUrl = convertedBaseUrl
         )
 
-        ProviderSetting.AICore::class -> ProviderSetting.AICore(
-            id = this.id,
-            enabled = this.enabled,
-            name = this.name,
-            models = this.models,
-            balanceOption = this.balanceOption,
-            builtIn = this.builtIn,
-            description = this.description,
-            shortDescription = this.shortDescription,
-        )
 
         else -> error("Unsupported provider type: $type")
     }
@@ -226,24 +194,20 @@ internal fun ProviderSetting.defaultBaseUrlForReset(): String {
             is ProviderSetting.OpenAI -> if (defaultProvider is ProviderSetting.OpenAI) return defaultProvider.baseUrl
             is ProviderSetting.Google -> if (defaultProvider is ProviderSetting.Google) return defaultProvider.baseUrl
             is ProviderSetting.Claude -> if (defaultProvider is ProviderSetting.Claude) return defaultProvider.baseUrl
-            is ProviderSetting.AICore -> return "" // on-device, no base URL
-            is ProviderSetting.LiteRtLocal -> return "" // on-device, no base URL
-            is ProviderSetting.LlamaCppLocal -> return "" // on-device, no base URL
             is ProviderSetting.Codex -> return "" // OAuth, no base URL
             is ProviderSetting.Grok -> return "" // OAuth, no base URL
             is ProviderSetting.GeminiOAuth -> return "" // OAuth, no base URL
+            else -> return "" // retired provider record; migration removes it on load
         }
     }
     return when (this) {
         is ProviderSetting.OpenAI -> ProviderSetting.OpenAI().baseUrl
         is ProviderSetting.Google -> ProviderSetting.Google().baseUrl
         is ProviderSetting.Claude -> ProviderSetting.Claude().baseUrl
-        is ProviderSetting.AICore -> ""
-        is ProviderSetting.LiteRtLocal -> ""
-        is ProviderSetting.LlamaCppLocal -> ""
         is ProviderSetting.Codex -> ""
         is ProviderSetting.Grok -> ""
         is ProviderSetting.GeminiOAuth -> ""
+        else -> "" // retired provider record; migration removes it on load
     }
 }
 
@@ -253,12 +217,10 @@ internal fun ProviderSetting.resetBaseUrlToDefault(): ProviderSetting {
         is ProviderSetting.OpenAI -> this.copy(baseUrl = defaultBaseUrl)
         is ProviderSetting.Google -> this.copy(baseUrl = defaultBaseUrl)
         is ProviderSetting.Claude -> this.copy(baseUrl = defaultBaseUrl)
-        is ProviderSetting.AICore -> this // no base URL to reset
-        is ProviderSetting.LiteRtLocal -> this // no base URL to reset
-        is ProviderSetting.LlamaCppLocal -> this // no base URL to reset
-        is ProviderSetting.Codex -> this // no base URL to reset
-        is ProviderSetting.Grok -> this // no base URL to reset
-        is ProviderSetting.GeminiOAuth -> this // no base URL to reset
+        is ProviderSetting.Codex -> this // OAuth, no base URL to reset
+        is ProviderSetting.Grok -> this // OAuth, no base URL to reset
+        is ProviderSetting.GeminiOAuth -> this // OAuth, no base URL to reset
+        else -> this // retired provider record; migration removes it on load
     }
 }
 
@@ -267,12 +229,10 @@ internal fun ProviderSetting.isUsingDefaultBaseUrl(): Boolean {
         is ProviderSetting.OpenAI -> this.baseUrl
         is ProviderSetting.Google -> this.baseUrl
         is ProviderSetting.Claude -> this.baseUrl
-        is ProviderSetting.AICore -> return true // no base URL concept
-        is ProviderSetting.LiteRtLocal -> return true // no base URL concept
-        is ProviderSetting.LlamaCppLocal -> return true // no base URL concept
-        is ProviderSetting.Codex -> return true // no base URL concept
-        is ProviderSetting.Grok -> return true // no base URL concept
-        is ProviderSetting.GeminiOAuth -> return true // no base URL concept
+        is ProviderSetting.Codex -> return true // OAuth, no base URL concept
+        is ProviderSetting.Grok -> return true // OAuth, no base URL concept
+        is ProviderSetting.GeminiOAuth -> return true // OAuth, no base URL concept
+        else -> return true // retired provider record; migration removes it on load
     }
     return baseUrl == defaultBaseUrlForReset()
 }
@@ -324,6 +284,29 @@ private fun ProviderConfigureOpenAI(
     onEdit: (provider: ProviderSetting.OpenAI) -> Unit
 ) {
     val toaster = LocalToaster.current
+    val openRouterOAuthManager = koinInject<OpenRouterOAuthManager>()
+    val openRouterOAuthStatus by openRouterOAuthManager.status.collectAsStateWithLifecycle()
+    val isOpenRouter = provider.baseUrl.toHttpUrlOrNull()?.host == "openrouter.ai"
+
+    LaunchedEffect(openRouterOAuthStatus, provider.id) {
+        when (val status = openRouterOAuthStatus) {
+            is OpenRouterOAuthStatus.Success -> {
+                if (status.providerId == provider.id) {
+                    onEdit(provider.copy(apiKey = status.apiKey, enabled = true))
+                    toaster.show(
+                        "OpenRouter connected. Refresh the model catalogue to choose a model.",
+                        type = ToastType.Success,
+                    )
+                    openRouterOAuthManager.consumeResult()
+                }
+            }
+            is OpenRouterOAuthStatus.Error -> {
+                toaster.show(status.message, type = ToastType.Error)
+                openRouterOAuthManager.consumeResult()
+            }
+            else -> Unit
+        }
+    }
 
     provider.description()
 
@@ -333,6 +316,27 @@ private fun ProviderConfigureOpenAI(
         label = { Text(stringResource(R.string.setting_provider_page_name)) },
         modifier = Modifier.fillMaxWidth(),
     )
+
+    if (isOpenRouter) {
+        OutlinedButton(
+            onClick = { openRouterOAuthManager.startLogin(provider.id) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = openRouterOAuthStatus !is OpenRouterOAuthStatus.Exchanging,
+        ) {
+            Text(
+                when (openRouterOAuthStatus) {
+                    OpenRouterOAuthStatus.Exchanging -> "Connecting OpenRouter…"
+                    OpenRouterOAuthStatus.AwaitingBrowser -> "Continue OpenRouter connection in your browser"
+                    else -> "Connect with OpenRouter"
+                }
+            )
+        }
+        Text(
+            "Secure browser sign-in creates a user-owned OpenRouter key with PKCE. You can also paste an existing key below.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 
     var keyVisible by remember { mutableStateOf(false) }
     OutlinedTextField(
@@ -400,7 +404,7 @@ private fun ProviderConfigureOpenAI(
     // OpenRouter is the only OpenAI-compatible host where this does anything: it gates
     // the cache_control breakpoints required by Anthropic/Gemini/Qwen models routed
     // through it. Other models on OpenRouter cache automatically regardless.
-    if (provider.baseUrl.toHttpUrlOrNull()?.host == "openrouter.ai") {
+    if (isOpenRouter) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -827,937 +831,6 @@ private fun ProviderConfigureGoogle(
             onValueChange = { onEdit(provider.copy(projectId = it.trim())) },
             label = { Text(stringResource(R.string.setting_provider_page_project_id)) },
             modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-@Composable
-private fun ColumnScope.ProviderConfigureAICore(
-    provider: ProviderSetting.AICore,
-    onEdit: (provider: ProviderSetting.AICore) -> Unit,
-) {
-    provider.description()
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(stringResource(id = R.string.setting_provider_page_enable), modifier = Modifier.weight(1f))
-        Checkbox(
-            checked = provider.enabled,
-            onCheckedChange = { onEdit(provider.copy(enabled = it)) },
-        )
-    }
-
-    OutlinedTextField(
-        value = provider.name,
-        onValueChange = { onEdit(provider.copy(name = it.trim())) },
-        label = { Text(stringResource(id = R.string.setting_provider_page_name)) },
-        modifier = Modifier.fillMaxWidth(),
-        maxLines = 3,
-    )
-
-    // Release-stage radio. PREVIEW pulls a higher-quality but more flappy build of Gemini
-    // Nano; STABLE is the default. Spec details in
-    // docs/superpowers/specs/2026-05-04-aicore-provider-design.md.
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(R.string.setting_provider_aicore_release_stage), modifier = Modifier.weight(1f))
-        SingleChoiceSegmentedButtonRow {
-            val stages = me.rerere.ai.provider.AICoreReleaseStage.entries
-            stages.forEachIndexed { index, stage ->
-                SegmentedButton(
-                    shape = SegmentedButtonDefaults.itemShape(index = index, count = stages.size),
-                    label = { Text(stage.name) },
-                    selected = provider.releaseStage == stage,
-                    onClick = { onEdit(provider.copy(releaseStage = stage)) },
-                )
-            }
-        }
-    }
-
-    Text(
-        text = stringResource(R.string.setting_provider_aicore_status_help),
-        style = MaterialTheme.typography.labelSmall,
-        modifier = Modifier.fillMaxWidth(),
-    )
-}
-
-@Composable
-private fun ColumnScope.ProviderConfigureLiteRT(
-    provider: ProviderSetting.LiteRtLocal,
-    onEdit: (ProviderSetting.LiteRtLocal) -> Unit,
-) {
-    val vm = koinViewModel<SettingLocalLlmViewModel>(
-        key = "configure-${LocalRuntime.LiteRT.displayName}",
-        parameters = { parametersOf(LocalRuntime.LiteRT) },
-    )
-    val downloadProgress by vm.downloadProgress.collectAsStateWithLifecycle()
-    val errorMessage by vm.errorMessage.collectAsStateWithLifecycle()
-    val accelerator by vm.accelerator.collectAsStateWithLifecycle()
-    val forceCpu by vm.forceCpu.collectAsStateWithLifecycle()
-    val maxNumTokensOverride by vm.maxNumTokensOverride.collectAsStateWithLifecycle()
-    val crashRecoveryAccel by vm.crashRecoveryAccelerator.collectAsStateWithLifecycle()
-    val installedModelFiles by vm.installedModelFiles.collectAsStateWithLifecycle()
-    val visionUnavailableSet by vm.visionUnavailableSet.collectAsStateWithLifecycle()
-    val perfTelemetry by vm.perfTelemetry.collectAsStateWithLifecycle()
-
-    provider.description()
-
-    // Friendly post-crash banner. Default tone is "we handled it", not "panic".
-    crashRecoveryAccel?.let { accel ->
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { vm.dismissCrashRecovery() },
-        ) {
-            Text(
-                text = stringResource(R.string.local_llm_crash_recovery_format, accel),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.padding(12.dp),
-            )
-        }
-    }
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(id = R.string.setting_provider_page_enable), modifier = Modifier.weight(1f))
-        Checkbox(
-            checked = provider.enabled,
-            onCheckedChange = { onEdit(provider.copy(enabled = it)) },
-        )
-    }
-
-    OutlinedTextField(
-        value = provider.name,
-        onValueChange = { onEdit(provider.copy(name = it.trim())) },
-        label = { Text(stringResource(id = R.string.setting_provider_page_name)) },
-        modifier = Modifier.fillMaxWidth(),
-        maxLines = 3,
-    )
-
-    // Installed model count — model management is on the Models tab (page 1).
-    Text(
-        text = stringResource(R.string.local_llm_installed_models_count, provider.models.size),
-        style = MaterialTheme.typography.bodySmall,
-    )
-
-    // URL install field — paste an HF URL, hit Install.
-    var manualUrl by remember { mutableStateOf("") }
-    OutlinedTextField(
-        value = manualUrl,
-        onValueChange = { manualUrl = it },
-        label = { Text(stringResource(R.string.local_llm_install_url_label)) },
-        supportingText = { Text(stringResource(R.string.local_llm_install_url_hint)) },
-        modifier = Modifier.fillMaxWidth(),
-    )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Button(
-            onClick = {
-                vm.startManualDownload(manualUrl)
-                manualUrl = ""
-            },
-            enabled = manualUrl.isNotBlank() && downloadProgress == null,
-        ) {
-            Text(stringResource(R.string.local_llm_install_url_action))
-        }
-        OutlinedButton(
-            onClick = { vm.startDefaultDownload() },
-            enabled = downloadProgress == null,
-        ) {
-            Text(stringResource(R.string.local_llm_download_default))
-        }
-    }
-
-    // Manage installed files — rename or delete each downloaded .litertlm.
-    if (provider.models.isNotEmpty()) {
-        Text(
-            stringResource(R.string.local_llm_manage_files_title),
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        provider.models.forEach { model ->
-            InstalledModelRow(
-                model = model,
-                visionUnavailable = model.modelId in visionUnavailableSet,
-                // After a native crash inside liblitertlm we suppress the Re-try
-                // vision button: re-trying immediately is what just crashed the app.
-                // The user dismisses the crash banner (above) when they want to opt
-                // back in to taking that risk; the button reappears.
-                allowVisionRetry = crashRecoveryAccel == null,
-                perfSample = perfTelemetry[model.modelId],
-                onRename = { newName -> vm.renameModel(model.modelId, newName) },
-                onDelete = { vm.deleteModel(model.modelId) },
-                onRetryVision = { vm.retryVisionEncoder(model.modelId) },
-            )
-        }
-    }
-
-    // Recommended-models curated picker. Sourced from Google AI Edge Gallery's allowlist
-    // (LiteRtCatalog.ENTRIES). Per-entry Install button calls the same startManualDownload
-    // path the URL-paste field uses, so the install flow is identical.
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-        Text(
-            stringResource(R.string.local_llm_catalog_title),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Text(
-            stringResource(R.string.local_llm_catalog_subtitle),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        LiteRtCatalog.ENTRIES.forEach { entry ->
-            LiteRtCatalogEntryCard(
-                entry = entry,
-                installed = entry.modelFile in installedModelFiles,
-                downloadInProgress = downloadProgress != null,
-                onInstall = { vm.startManualDownload(entry.resolveUrl()) },
-            )
-        }
-    }
-
-    // Accelerator row with re-detect button.
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            stringResource(R.string.local_llm_accelerator_label, accelerator ?: "auto"),
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        OutlinedButton(onClick = { vm.reDetectAccelerator() }) {
-            Text(stringResource(R.string.local_llm_re_detect))
-        }
-    }
-
-    // GPU acceleration toggle. The default is now device-dependent (see
-    // LocalRuntimePreferences.defaultForceCpu): ON for capable devices, OFF only for the
-    // Google Tensor crash class where LiteRT-LM 0.11.0's GPU/NNAPI backend SIGSEGVs during
-    // inference. The toggle still lets the user override either way; the crash sweep and
-    // the runtime's GPU->CPU fallback backstop a wrong default.
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                stringResource(R.string.local_llm_try_gpu_label),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                stringResource(R.string.local_llm_try_gpu_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(
-            checked = !forceCpu,
-            onCheckedChange = { wantGpu -> vm.setForceCpu(!wantGpu) },
-        )
-    }
-
-    // Max-context override. Lets users push capable models (Gemma 4 E2B = 32k) past
-    // Gallery's curated defaults — the model's underlying KV cache size is still the
-    // hard ceiling (Qwen `ekv4096` rejects values above 4096 regardless of this).
-    var maxTokensInput by remember(maxNumTokensOverride) {
-        mutableStateOf(maxNumTokensOverride?.toString() ?: "")
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(
-            stringResource(R.string.local_llm_max_tokens_label),
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Text(
-            stringResource(R.string.local_llm_max_tokens_desc),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = maxTokensInput,
-                onValueChange = { newValue ->
-                    // Accept digits-only input; empty string = use curated default.
-                    if (newValue.isEmpty() || newValue.all { it.isDigit() }) {
-                        maxTokensInput = newValue
-                        val parsed = newValue.toIntOrNull()?.takeIf { it in 1..131072 }
-                        vm.setMaxNumTokensOverride(parsed)
-                    }
-                },
-                placeholder = {
-                    Text(stringResource(R.string.local_llm_max_tokens_placeholder))
-                },
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-            )
-            OutlinedButton(
-                onClick = {
-                    maxTokensInput = ""
-                    vm.setMaxNumTokensOverride(null)
-                },
-                enabled = maxNumTokensOverride != null,
-            ) {
-                Text(stringResource(R.string.local_llm_max_tokens_reset))
-            }
-        }
-    }
-
-    // Download progress indicator.
-    downloadProgress?.let { progress ->
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (progress.totalBytes != null && progress.totalBytes > 0) {
-                LinearProgressIndicator(
-                    progress = { progress.percent / 100f },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-            Text(
-                text = stringResource(R.string.local_llm_download_progress, progress.percent),
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
-    }
-
-    // Error text + optional "Delete model" action when a model file is the likely culprit.
-    errorMessage?.let { msg ->
-        Text(
-            text = stringResource(R.string.local_llm_status_error_format, msg),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-        )
-        // If there are installed models, offer to delete them so the user can clear a
-        // broken file (e.g. wrong runtime version) without navigating away.
-        if (provider.models.isNotEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                provider.models.forEach { model ->
-                    OutlinedButton(onClick = { vm.deleteModel(model.modelId) }) {
-                        Text(
-                            text = stringResource(R.string.local_llm_delete_model) +
-                                if (provider.models.size > 1) " ${model.modelId}" else "",
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ColumnScope.ProviderConfigureLlamaCpp(
-    provider: ProviderSetting.LlamaCppLocal,
-    onEdit: (ProviderSetting.LlamaCppLocal) -> Unit,
-) {
-    val vm = koinViewModel<SettingLocalLlmViewModel>(
-        key = "configure-${LocalRuntime.LlamaCpp.displayName}",
-        parameters = { parametersOf(LocalRuntime.LlamaCpp) },
-    )
-    val downloadProgress by vm.downloadProgress.collectAsStateWithLifecycle()
-    val errorMessage by vm.errorMessage.collectAsStateWithLifecycle()
-    val installedModelFiles by vm.installedModelFiles.collectAsStateWithLifecycle()
-    val perfTelemetry by vm.perfTelemetry.collectAsStateWithLifecycle()
-
-    val context = LocalContext.current
-    val filePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (nameIndex >= 0) cursor.getString(nameIndex) else null
-            } else null
-        } ?: uri.lastPathSegment ?: "model.gguf"
-        val inputStream = context.contentResolver.openInputStream(uri) ?: return@rememberLauncherForActivityResult
-        vm.installPickedFile(inputStream, fileName)
-    }
-
-    provider.description()
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(stringResource(id = R.string.setting_provider_page_enable), modifier = Modifier.weight(1f))
-        Checkbox(
-            checked = provider.enabled,
-            onCheckedChange = { onEdit(provider.copy(enabled = it)) },
-        )
-    }
-
-    OutlinedTextField(
-        value = provider.name,
-        onValueChange = { onEdit(provider.copy(name = it.trim())) },
-        label = { Text(stringResource(id = R.string.setting_provider_page_name)) },
-        modifier = Modifier.fillMaxWidth(),
-        maxLines = 3,
-    )
-
-    // Installed model count — model management is on the Models tab (page 1).
-    Text(
-        text = stringResource(R.string.local_llm_installed_models_count, provider.models.size),
-        style = MaterialTheme.typography.bodySmall,
-    )
-
-    // Install a GGUF the user already has on-device, via the storage file picker.
-    OutlinedButton(
-        onClick = { filePicker.launch(arrayOf("application/octet-stream")) },
-        enabled = downloadProgress == null,
-    ) {
-        Text(stringResource(R.string.local_llm_llamacpp_import_action))
-    }
-
-    // Manage installed files — rename or delete each downloaded GGUF.
-    if (provider.models.isNotEmpty()) {
-        Text(
-            stringResource(R.string.local_llm_manage_files_title),
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        provider.models.forEach { model ->
-            InstalledModelRow(
-                model = model,
-                // llama.cpp is CPU-only with no vision support in this build (vision and
-                // mmproj are a spec non-goal) — there is no vision encoder that could
-                // fail, so this row never shows the vision caption or retry button.
-                visionUnavailable = false,
-                allowVisionRetry = false,
-                perfSample = perfTelemetry[model.modelId],
-                onRename = { newName -> vm.renameModel(model.modelId, newName) },
-                onDelete = { vm.deleteModel(model.modelId) },
-                onRetryVision = {},
-            )
-        }
-    }
-
-    // Curated GGUF picker (LlamaCppCatalog.ENTRIES). Per-entry Install button calls the
-    // same startManualDownload path the LiteRT catalog uses below, so the install flow
-    // (and the progress/error reporting at the bottom of this tile) is identical.
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-        Text(
-            stringResource(R.string.local_llm_llamacpp_catalog_title),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Text(
-            stringResource(R.string.local_llm_llamacpp_catalog_subtitle),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        LlamaCppCatalog.ENTRIES.forEach { entry ->
-            LlamaCppCatalogEntryCard(
-                entry = entry,
-                installed = entry.file in installedModelFiles,
-                downloadInProgress = downloadProgress != null,
-                onInstall = { vm.startManualDownload(entry.resolveUrl()) },
-            )
-        }
-    }
-
-    // HuggingFace search: the public, unauthenticated model API filtered to GGUF repos. A
-    // chosen file installs through the same startManualDownload path as the URL field and
-    // the curated catalog above, so download/resume/magic-byte behaviour is identical.
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
-        Text(
-            stringResource(R.string.local_llm_hf_search_title),
-            style = MaterialTheme.typography.titleSmall,
-        )
-
-        var hfQuery by remember { mutableStateOf("") }
-        val hfSearchResults by vm.hfSearchResults.collectAsStateWithLifecycle()
-        val hfSearchInProgress by vm.hfSearchInProgress.collectAsStateWithLifecycle()
-        val hfSelectedRepoId by vm.hfSelectedRepoId.collectAsStateWithLifecycle()
-        val hfSelectedRepoFiles by vm.hfSelectedRepoFiles.collectAsStateWithLifecycle()
-
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = hfQuery,
-                onValueChange = { hfQuery = it },
-                label = { Text(stringResource(R.string.local_llm_hf_search_placeholder)) },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-            )
-            Button(
-                onClick = { vm.searchHuggingFace(hfQuery) },
-                enabled = !hfSearchInProgress && hfQuery.isNotBlank(),
-            ) {
-                Text(stringResource(R.string.local_llm_hf_search_action))
-            }
-        }
-
-        if (hfSearchInProgress) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        }
-
-        val selectedRepoId = hfSelectedRepoId
-        if (selectedRepoId == null) {
-            if (!hfSearchInProgress && hfQuery.isNotBlank() && hfSearchResults.isEmpty()) {
-                Text(
-                    stringResource(R.string.local_llm_hf_search_no_results),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            hfSearchResults.forEach { repo ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { vm.selectHuggingFaceRepo(repo.id) },
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(repo.id, style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            stringResource(R.string.local_llm_hf_downloads_format, repo.downloads),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        } else {
-            TextButton(onClick = { vm.clearHuggingFaceSelection() }) {
-                Text(stringResource(R.string.local_llm_hf_back_to_results))
-            }
-            when (val filesResult = hfSelectedRepoFiles) {
-                null -> Text(
-                    stringResource(R.string.local_llm_hf_loading_files),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                is HuggingFaceModelSearch.FilesResult.RequiresAccess -> Text(
-                    stringResource(R.string.local_llm_hf_requires_access),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-
-                is HuggingFaceModelSearch.FilesResult.Error -> Text(
-                    stringResource(R.string.local_llm_hf_files_error_format, filesResult.message),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-
-                is HuggingFaceModelSearch.FilesResult.Files -> if (filesResult.entries.isEmpty()) {
-                    Text(
-                        stringResource(R.string.local_llm_hf_no_gguf_files),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    filesResult.entries.forEach { file ->
-                        HuggingFaceFileRow(
-                            fileName = file.fileName,
-                            sizeBytes = file.sizeBytes,
-                            installed = file.fileName in installedModelFiles,
-                            downloadInProgress = downloadProgress != null,
-                            onInstall = { vm.installFromHuggingFace(selectedRepoId, file.fileName) },
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    // Download progress indicator.
-    downloadProgress?.let { progress ->
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (progress.totalBytes != null && progress.totalBytes > 0) {
-                LinearProgressIndicator(
-                    progress = { progress.percent / 100f },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
-            Text(
-                text = stringResource(R.string.local_llm_download_progress, progress.percent),
-                style = MaterialTheme.typography.labelSmall,
-            )
-        }
-    }
-
-    // Error text.
-    errorMessage?.let { msg ->
-        Text(
-            text = stringResource(R.string.local_llm_status_error_format, msg),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-        )
-    }
-}
-
-@Composable
-private fun HuggingFaceFileRow(
-    fileName: String,
-    sizeBytes: Long,
-    installed: Boolean,
-    downloadInProgress: Boolean,
-    onInstall: () -> Unit,
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(12.dp),
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(fileName, style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    text = String.format(
-                        java.util.Locale.US,
-                        stringResource(R.string.local_llm_hf_file_size_gb_format),
-                        sizeBytes / 1_000_000_000.0,
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (installed) {
-                Text(
-                    text = stringResource(R.string.local_llm_catalog_installed),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            } else {
-                Button(
-                    onClick = onInstall,
-                    enabled = !downloadInProgress,
-                ) {
-                    Text(stringResource(R.string.local_llm_catalog_install))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LlamaCppCatalogEntryCard(
-    entry: LlamaCppCatalogEntry,
-    installed: Boolean,
-    downloadInProgress: Boolean,
-    onInstall: () -> Unit,
-) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(12.dp),
-        ) {
-            Text(
-                entry.displayName,
-                style = MaterialTheme.typography.titleSmall,
-            )
-
-            Text(
-                entry.repo,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            if (entry.tags.isNotEmpty()) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    entry.tags.forEach { tag ->
-                        val labelRes = when (tag) {
-                            "thinking" -> R.string.local_llm_catalog_tag_thinking
-                            "tools" -> R.string.local_llm_catalog_tag_tools
-                            else -> null
-                        }
-                        val label = labelRes?.let { stringResource(it) } ?: tag
-                        SuggestionChip(
-                            onClick = {},
-                            enabled = false,
-                            label = {
-                                Text(
-                                    label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            },
-                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                disabledContainerColor = MaterialTheme.colorScheme.surface,
-                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        )
-                    }
-                }
-            }
-
-            Text(
-                text = String.format(
-                    java.util.Locale.US,
-                    stringResource(R.string.local_llm_catalog_size_format),
-                    entry.sizeBytes / 1_000_000_000.0,
-                    entry.minMemGb,
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (installed) {
-                    Text(
-                        text = stringResource(R.string.local_llm_catalog_installed),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                } else {
-                    Button(
-                        onClick = onInstall,
-                        enabled = !downloadInProgress,
-                    ) {
-                        Text(stringResource(R.string.local_llm_catalog_install))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LiteRtCatalogEntryCard(
-    entry: LiteRtCatalogEntry,
-    installed: Boolean,
-    downloadInProgress: Boolean,
-    onInstall: () -> Unit,
-) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(12.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    entry.displayName,
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.weight(1f),
-                )
-                if (entry.recommended) {
-                    Text(
-                        text = stringResource(R.string.local_llm_catalog_recommended),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier
-                            .clip(MaterialTheme.shapes.small)
-                            .background(MaterialTheme.colorScheme.secondaryContainer)
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                    )
-                }
-            }
-
-            Text(
-                entry.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            if (entry.tags.isNotEmpty()) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    entry.tags.forEach { tag ->
-                        val labelRes = when (tag) {
-                            "multimodal" -> R.string.local_llm_catalog_tag_multimodal
-                            "thinking" -> R.string.local_llm_catalog_tag_thinking
-                            "speculative-decoding" -> R.string.local_llm_catalog_tag_speculative
-                            else -> null
-                        }
-                        val label = labelRes?.let { stringResource(it) } ?: tag
-                        SuggestionChip(
-                            onClick = {},
-                            enabled = false,
-                            label = {
-                                Text(
-                                    label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            },
-                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                disabledContainerColor = MaterialTheme.colorScheme.surface,
-                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            ),
-                        )
-                    }
-                }
-            }
-
-            Text(
-                text = String.format(
-                    java.util.Locale.US,
-                    stringResource(R.string.local_llm_catalog_size_format),
-                    entry.sizeBytes / 1_000_000_000.0,
-                    entry.minDeviceMemoryGb,
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (installed) {
-                    Text(
-                        text = stringResource(R.string.local_llm_catalog_installed),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                } else {
-                    Button(
-                        onClick = onInstall,
-                        enabled = !downloadInProgress,
-                    ) {
-                        Text(stringResource(R.string.local_llm_catalog_install))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun InstalledModelRow(
-    model: Model,
-    visionUnavailable: Boolean,
-    allowVisionRetry: Boolean,
-    perfSample: me.rerere.locallm.LocalRuntimePreferences.PerfSample?,
-    onRename: (String) -> Unit,
-    onDelete: () -> Unit,
-    onRetryVision: () -> Unit,
-) {
-    var renaming by remember { mutableStateOf(false) }
-    var renameText by remember(model.id) { mutableStateOf(model.displayName) }
-    var confirmDelete by remember { mutableStateOf(false) }
-
-    if (renaming) {
-        OutlinedTextField(
-            value = renameText,
-            onValueChange = { renameText = it },
-            label = { Text(stringResource(R.string.local_llm_rename_label)) },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            TextButton(onClick = { renaming = false }) {
-                Text(stringResource(R.string.cancel))
-            }
-            Spacer(Modifier.weight(1f))
-            Button(
-                onClick = {
-                    onRename(renameText)
-                    renaming = false
-                },
-                enabled = renameText.isNotBlank() && renameText != model.displayName,
-            ) {
-                Text(stringResource(R.string.local_llm_rename_save))
-            }
-        }
-    } else {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(model.displayName, style = MaterialTheme.typography.bodyMedium)
-                Text(
-                    model.modelId,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = LocalContentColor.current.copy(alpha = 0.6f),
-                )
-                if (visionUnavailable) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.local_llm_vision_unavailable_caption),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        if (allowVisionRetry) {
-                            TextButton(
-                                onClick = onRetryVision,
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                            ) {
-                                Text(
-                                    stringResource(R.string.local_llm_vision_retry),
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            }
-                        }
-                    }
-                }
-                perfSample?.let { sample ->
-                    Text(
-                        text = stringResource(
-                            R.string.local_llm_perf_telemetry_format,
-                            sample.prefillTps,
-                            sample.decodeTps,
-                        ) + if (sample.specDecodingEngaged) " · " +
-                            stringResource(R.string.local_llm_spec_decoding_engaged_short)
-                        else "",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = LocalContentColor.current.copy(alpha = 0.7f),
-                    )
-                }
-            }
-            IconButton(onClick = { renaming = true }) {
-                Icon(HugeIcons.Edit01, stringResource(R.string.local_llm_rename))
-            }
-            IconButton(onClick = { confirmDelete = true }) {
-                Icon(HugeIcons.Delete01, stringResource(R.string.local_llm_delete))
-            }
-        }
-    }
-
-    if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text(stringResource(R.string.local_llm_delete_confirm_title)) },
-            text = { Text(stringResource(R.string.local_llm_delete_confirm_message, model.displayName)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDelete = false
-                    onDelete()
-                }) {
-                    Text(stringResource(R.string.local_llm_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
         )
     }
 }

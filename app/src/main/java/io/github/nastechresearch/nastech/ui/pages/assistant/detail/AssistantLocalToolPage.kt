@@ -628,21 +628,6 @@ private fun AssistantLocalToolContent(
             )
             item(
                 headlineContent = {
-                    Text(stringResource(R.string.assistant_page_local_tools_speech_to_text_title))
-                },
-                supportingContent = {
-                    Text(stringResource(R.string.assistant_page_local_tools_speech_to_text_desc))
-                },
-                trailingContent = {
-                    PermissionedSwitch(
-                        checked = assistant.localTools.contains(LocalToolOption.SpeechToText),
-                        onCheckedChange = { toggleLocalTool(LocalToolOption.SpeechToText, it) },
-                        requiredRuntimePerms = listOf(Manifest.permission.RECORD_AUDIO),
-                    )
-                }
-            )
-            item(
-                headlineContent = {
                     Text(stringResource(R.string.assistant_page_local_tools_fingerprint_title))
                 },
                 supportingContent = {
