@@ -31,7 +31,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -183,7 +183,7 @@ class ElevenLabsASRController(
             }
         }
         val wavBytes = pcm16ToWav(pcmBytes, provider.sampleRate)
-        val audioBody = wavBytes.asRequestBody("audio/wav".toMediaType())
+        val audioBody = wavBytes.toRequestBody("audio/wav".toMediaType())
         val multipart = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("file", "nastech-recording.wav", audioBody)
