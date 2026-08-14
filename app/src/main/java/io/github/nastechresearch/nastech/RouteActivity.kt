@@ -128,7 +128,7 @@ import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesNoti
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesGeneralPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingPreferencesUIPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingThemePage
-import io.github.nastechresearch.nastech.ui.pages.welcome.WelcomePage
+import io.github.nastechresearch.nastech.ui.pages.home.AgentWorkspaceHomePage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingChatStoragePage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingFilesPage
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingMcpPage
@@ -309,13 +309,10 @@ class RouteActivity : ComponentActivity() {
             )
         }
 
-        val requiresWelcome = settings.onboardingAcceptedVersion != BuildConfig.VERSION_NAME
-        val backStack = if (requiresWelcome) {
-            rememberNavBackStack(Screen.Welcome(initialChatIds.last()))
-        } else if (deepLinkConversationId != null) {
+        val backStack = if (deepLinkConversationId != null) {
             rememberNavBackStack(Screen.Chat(initialChatIds.last()))
         } else {
-            rememberNavBackStack(Screen.Chat(initialChatIds.last()))
+            rememberNavBackStack(Screen.Home)
         }
         SideEffect { this@RouteActivity.navStack = backStack }
 
@@ -409,8 +406,8 @@ class RouteActivity : ComponentActivity() {
                                 )
                             }
 
-                            entry<Screen.Welcome> { key ->
-                                WelcomePage(chatId = key.chatId)
+                            entry<Screen.Home> {
+                                AgentWorkspaceHomePage()
                             }
 
                             entry<Screen.ShareHandler> { key ->
@@ -752,8 +749,7 @@ sealed interface Screen : NavKey {
     ) : Screen
 
     @Serializable
-    data class Welcome(val chatId: String) : Screen
-
+    data object Home : Screen
 
     @Serializable
     data class ShareHandler(val text: String, val streamUri: String? = null) : Screen

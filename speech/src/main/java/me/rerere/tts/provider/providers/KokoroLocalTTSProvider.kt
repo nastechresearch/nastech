@@ -39,7 +39,7 @@ class KokoroLocalTTSProvider(
         val modelDirectory = packageManager.readyDirectory(modelPackage)
             ?: error("Download and verify the selected local voice package before using this provider")
         val requestedProvider = providerSetting.provider.normalizedProvider()
-        val runtime = createRuntime(context, modelDirectory, modelPackage, requestedProvider)
+        val runtime = createRuntime(modelDirectory, modelPackage, requestedProvider)
         try {
             val audio = runtime.tts.generate(
                 request.text,
@@ -73,21 +73,20 @@ class KokoroLocalTTSProvider(
     }
 
     private fun createRuntime(
-        context: Context,
         modelDirectory: File,
         modelPackage: KokoroPackageVariant,
         requestedProvider: String,
     ): RuntimeSelection {
         return runCatching {
             RuntimeSelection(
-                tts = createOfflineTts(context, modelDirectory, modelPackage, requestedProvider),
+                tts = createOfflineTts(modelDirectory, modelPackage, requestedProvider),
                 activeProvider = requestedProvider,
                 didFallback = false,
             )
         }.getOrElse { originalError ->
             if (requestedProvider != NNAPI_PROVIDER) throw originalError
             RuntimeSelection(
-                tts = createOfflineTts(context, modelDirectory, modelPackage, CPU_PROVIDER),
+                tts = createOfflineTts(modelDirectory, modelPackage, CPU_PROVIDER),
                 activeProvider = CPU_PROVIDER,
                 didFallback = true,
             )
@@ -95,33 +94,34 @@ class KokoroLocalTTSProvider(
     }
 
     private fun createOfflineTts(
-        context: Context,
         modelDirectory: File,
         modelPackage: KokoroPackageVariant,
         provider: String,
     ): OfflineTts {
-        val kokoro = OfflineTtsKokoroModelConfig().apply {
-            model = modelDirectory.resolve(modelPackage.modelFileName).absolutePath
-            voices = modelDirectory.resolve("voices.bin").absolutePath
-            tokens = modelDirectory.resolve("tokens.txt").absolutePath
-            dataDir = modelDirectory.resolve("espeak-ng-data").absolutePath
-            lexicon = listOf(
-                modelDirectory.resolve("lexicon-us-en.txt").absolutePath,
-                modelDirectory.resolve("lexicon-zh.txt").absolutePath,
-            ).joinToString(",")
-        }
-        val modelConfig = OfflineTtsModelConfig().apply {
-            this.kokoro = kokoro
-            numThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, MAX_CPU_THREADS)
-            debug = false
-            this.provider = provider
-        }
-        val config = OfflineTtsConfig().apply {
-            model = modelConfig
-            maxNumSentences = 1
-            silenceScale = 0.2f
-        }
-        return OfflineTts(context.assets, config)
+        val kokoro = OfflineTtsKokoroModelConfig.builder()
+            .setModel(modelDirectory.resolve(modelPackage.modelFileName).absolutePath)
+            .setVoices(modelDirectory.resolve("voices.bin").absolutePath)
+            .setTokens(modelDirectory.resolve("tokens.txt").absolutePath)
+            .setDataDir(modelDirectory.resolve("espeak-ng-data").absolutePath)
+            .setLexicon(
+                listOf(
+                    modelDirectory.resolve("lexicon-us-en.txt").absolutePath,
+                    modelDirectory.resolve("lexicon-zh.txt").absolutePath,
+                ).joinToString(","),
+            )
+            .build()
+        val modelConfig = OfflineTtsModelConfig.builder()
+            .setKokoro(kokoro)
+            .setNumThreads(Runtime.getRuntime().availableProcessors().coerceIn(1, MAX_CPU_THREADS))
+            .setDebug(false)
+            .setProvider(provider)
+            .build()
+        val config = OfflineTtsConfig.builder()
+            .setModel(modelConfig)
+            .setMaxNumSentences(1)
+            .setSilenceScale(0.2f)
+            .build()
+        return OfflineTts(config)
     }
 
     private fun pcmFloatsToWav(samples: FloatArray, sampleRate: Int): ByteArray {

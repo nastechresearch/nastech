@@ -16,11 +16,10 @@ private const val TAG = "GHReleaseChecker"
  * the locally-installed [BuildConfig.VERSION_NAME]. Pure HTTP — no caching, no scheduler,
  * no UI. Surfaces are responsible for invoking when the user / scheduler asks.
  *
- * Tag schema: every release on this fork ships as `vX.Y.Z-agent.N` where `vX.Y.Z` is the
- * upstream Nastech version this fork is built on top of and `N` is the agent revision.
- * The newer-than comparator is lexicographic by (X, Y, Z, N) — works for the current
- * `2.1.15-agent.0` schema. Pre-release suffixes outside `-agent.N` (e.g. `-rc1`) are not
- * supported; if the user ever ships those, this comparator needs revisiting.
+ * Release tags are accepted in ordinary `vX.Y.Z` form, with optional prerelease suffixes.
+ * The comparator uses the numeric core and safely treats malformed tags as non-updates, which
+ * avoids presenting a download prompt for an unreadable release label.
+
  */
 class GitHubReleaseChecker(private val client: OkHttpClient) {
 
@@ -35,6 +34,14 @@ class GitHubReleaseChecker(private val client: OkHttpClient) {
         val draft: Boolean = false,
         val prerelease: Boolean = false,
         val body: String = "",
+        val assets: List<ReleaseAsset> = emptyList(),
+    )
+
+    @Serializable
+    data class ReleaseAsset(
+        val name: String = "",
+        val browser_download_url: String = "",
+        val size: Long = 0L,
     )
 
     sealed class CheckResult {
@@ -78,9 +85,8 @@ class GitHubReleaseChecker(private val client: OkHttpClient) {
     }
 
     /**
-     * True if [latestRaw] is strictly newer than [currentRaw]. Both expected in the
-     * `X.Y.Z-agent.N` shape; missing components default to 0 so partial / older formats
-     * still compare. Returns false on parse error to fail safe (no spurious update prompt).
+     * True if [latestRaw] is strictly newer than [currentRaw]. Missing numeric components default
+     * to zero, and an optional suffix is compared only after the X.Y.Z core.
      */
     fun isNewer(latestRaw: String, currentRaw: String): Boolean {
         val latest = parse(latestRaw) ?: return false
@@ -89,7 +95,7 @@ class GitHubReleaseChecker(private val client: OkHttpClient) {
     }
 
     private fun parse(raw: String): IntArray? {
-        // Accepts `2.1.15-agent.0`, `v2.1.15-agent.0`, or just `2.1.15`.
+        // Accepts `2.4.8`, `v2.4.8`, and optional suffixes such as `2.4.8-rc.1`.
         val cleaned = raw.removePrefix("v").trim()
         if (cleaned.isEmpty()) return null
         val parts = cleaned.split('-')
