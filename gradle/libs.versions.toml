@@ -158,7 +158,7 @@ reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reo
 commons-text = { module = "org.apache.commons:commons-text", version.ref = "commons-text" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
 onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
-sherpa-onnx-android = { module = "com.github.k2-fsa:sherpa-onnx", version.ref = "sherpa-onnx" }
+sherpa-onnx-android = { module = "com.github.k2-fsa.sherpa-onnx:sherpa-onnx", version.ref = "sherpa-onnx" }
 modelcontextprotocol-kotlin-sdk = { module = "io.modelcontextprotocol:kotlin-sdk", version.ref = "mcp" }
 pebble = { module = "io.pebbletemplates:pebble", version.ref = "pebble" }
 diffutils = { module = "io.github.java-diff-utils:java-diff-utils", version.ref = "diffutils" }
