@@ -7,8 +7,10 @@ import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,8 +28,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -110,6 +115,14 @@ fun HighlightCodeBlock(
     var previewMode by remember(canInlinePreview, code, normalizedLanguage) {
         mutableStateOf(canInlinePreview)
     }
+    val isCleanHtmlPreview = canInlinePreview && normalizedLanguage == "html" && previewMode
+    var showHtmlActions by remember(code, normalizedLanguage) { mutableStateOf(false) }
+
+    fun openHtmlFullScreen() {
+        val content = buildCodePreviewHtml(code = code, language = normalizedLanguage)
+        val contentId = WebViewContentCache.store(context.cacheDir, content)
+        navController.navigate(Screen.WebView(contentId = contentId))
+    }
 
     var isExpanded by remember(settings.displaySetting.codeBlockAutoCollapse) {
         mutableStateOf(!settings.displaySetting.codeBlockAutoCollapse)
@@ -134,43 +147,50 @@ fun HighlightCodeBlock(
     }
 
     Column(
-        modifier = modifier
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large)
-            .clip(MaterialTheme.shapes.large)
-            .background(MaterialTheme.colorScheme.surfaceContainer),
+        modifier = if (isCleanHtmlPreview) modifier else {
+            modifier
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.large)
+                .clip(MaterialTheme.shapes.large)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+        },
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-        ) {
-            HighlightCodeActions(
-                language = language,
-                scope = scope,
-                clipboardManager = clipboardManager,
-                code = code,
-                createDocumentLauncher = createDocumentLauncher,
-                navController = navController,
-                completeCodeBlock = completeCodeBlock,
-                previewMode = previewMode,
-                canInlinePreview = canInlinePreview,
-                onTogglePreviewMode = {
-                    previewMode = !previewMode
-                },
-            )
+        if (!isCleanHtmlPreview) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                HighlightCodeActions(
+                    language = language,
+                    scope = scope,
+                    clipboardManager = clipboardManager,
+                    code = code,
+                    createDocumentLauncher = createDocumentLauncher,
+                    navController = navController,
+                    completeCodeBlock = completeCodeBlock,
+                    previewMode = previewMode,
+                    canInlinePreview = canInlinePreview,
+                    onTogglePreviewMode = {
+                        previewMode = !previewMode
+                    },
+                )
+            }
         }
         Column(
-            modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
+            modifier = if (isCleanHtmlPreview) Modifier else Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
         ) {
             when {
                 canInlinePreview && previewMode -> {
                     CodeBlockPreview(
                         code = code,
                         language = normalizedLanguage,
+                        cleanPreview = isCleanHtmlPreview,
+                        onOpenFullScreen = ::openHtmlFullScreen,
+                        onOpenActions = { showHtmlActions = true },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp),
+                            .height(if (isCleanHtmlPreview) 260.dp else 200.dp),
                     )
                 }
                 completeCodeBlock && normalizedLanguage == "mermaid" -> {
@@ -248,6 +268,24 @@ fun HighlightCodeBlock(
                 }
             }
         }
+    }
+
+    if (showHtmlActions) {
+        HtmlPreviewActionSheet(
+            onDismiss = { showHtmlActions = false },
+            onViewCode = { previewMode = false },
+            onOpenFullScreen = ::openHtmlFullScreen,
+            onCopy = {
+                scope.launch {
+                    clipboardManager.setClipEntry(ClipEntry(ClipData.newPlainText("html", code)))
+                }
+            },
+            onDownload = {
+                createDocumentLauncher.launch(
+                    "nastech_page_${Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())}.html"
+                )
+            },
+        )
     }
 }
 
@@ -472,10 +510,14 @@ private fun HighlightCodeActions(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CodeBlockPreview(
     code: String,
     language: String,
+    cleanPreview: Boolean = false,
+    onOpenFullScreen: () -> Unit = {},
+    onOpenActions: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state = rememberWebViewState(
@@ -490,10 +532,55 @@ private fun CodeBlockPreview(
         }
     )
 
-    WebView(
-        state = state,
-        modifier = modifier.clip(RoundedCornerShape(4.dp)),
-    )
+    Box(
+        modifier = modifier.clip(if (cleanPreview) RoundedCornerShape(0.dp) else RoundedCornerShape(4.dp)),
+    ) {
+        WebView(
+            state = state,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (cleanPreview) {
+            // Android WebView owns touch dispatch, so an invisible overlay ensures the parent
+            // message interaction remains dependable while the page continues to animate below.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .combinedClickable(
+                        onClick = onOpenFullScreen,
+                        onDoubleClick = onOpenActions,
+                        onLongClick = onOpenActions,
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HtmlPreviewActionSheet(
+    onDismiss: () -> Unit,
+    onViewCode: () -> Unit,
+    onOpenFullScreen: () -> Unit,
+    onCopy: () -> Unit,
+    onDownload: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text("HTML page options", style = MaterialTheme.typography.titleLarge)
+            Text(
+                "Open the responsive page, inspect its code, or save a copy.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            TextButton(onClick = { onOpenFullScreen(); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("Open full screen") }
+            TextButton(onClick = { onViewCode(); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("View code") }
+            TextButton(onClick = { onCopy(); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("Copy HTML") }
+            TextButton(onClick = { onDownload(); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("Download HTML") }
+        }
+    }
 }
 
 private fun buildCodePreviewHtml(code: String, language: String): String {
