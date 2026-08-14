@@ -185,6 +185,10 @@ class ChatVM(
         }
     }
 
+    /** Queue a complete draft behind the current response without cancelling that response. */
+    fun queueMessage(content: List<UIMessagePart>): Boolean =
+        chatService.queueMessage(_conversationId, content)
+
     fun handleCompressContext(additionalPrompt: String, targetTokens: Int, keepRecentMessages: Int): Job {
         return chatService.compressConversationAsync(
             conversationId = _conversationId,

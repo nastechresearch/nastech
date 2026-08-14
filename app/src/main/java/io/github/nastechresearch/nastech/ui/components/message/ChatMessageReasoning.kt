@@ -95,15 +95,16 @@ private fun rememberReasoningState(reasoning: UIMessagePart.Reasoning): Pair<Rea
 
     LaunchedEffect(reasoning.reasoning, loading) {
         if (loading) {
-            if (!state.expandState.expanded && settings.displaySetting.showThinkingContent)
-                state.expandState = ReasoningCardState.Preview
-            scrollState.animateScrollTo(scrollState.maxValue)
-        } else {
+            // Keep active thought compact like a modern inline status. Details stay available
+            // on tap, but streaming reasoning never opens a second large message layer by default.
             if (state.expandState.expanded) {
-                state.expandState = if (settings.displaySetting.autoCloseThinking)
-                    ReasoningCardState.Collapsed
-                else
-                    ReasoningCardState.Expanded
+                scrollState.animateScrollTo(scrollState.maxValue)
+            }
+        } else if (state.expandState.expanded) {
+            state.expandState = if (settings.displaySetting.autoCloseThinking) {
+                ReasoningCardState.Collapsed
+            } else {
+                ReasoningCardState.Expanded
             }
         }
     }

@@ -146,24 +146,10 @@ fun <T> ChainOfThought(
                     }
                 }
 
-                val lineColor = MaterialTheme.colorScheme.outlineVariant
                 val scope = remember { ChainOfThoughtScopeImpl() }
-                Box(
-                    modifier = Modifier.drawBehind {
-                        val x = 12.dp.toPx()
-                        val offsetPx = 18.dp.toPx()
-                        drawLine(
-                            color = lineColor,
-                            start = Offset(x, offsetPx),
-                            end = Offset(x, size.height - offsetPx),
-                            strokeWidth = 1.dp.toPx()
-                        )
-                    }
-                ) {
-                    Column {
-                        visibleSteps.fastForEach { step ->
-                            scope.content(step)
-                        }
+                Column {
+                    visibleSteps.fastForEach { step ->
+                        scope.content(step)
                     }
                 }
         }

@@ -116,6 +116,7 @@ import me.rerere.workspace.WorkspaceShellStatus
 import java.time.Instant
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.uuid.Uuid
@@ -234,6 +235,8 @@ class ChatService(
 
     // 统一会话管理
     private val sessions = ConcurrentHashMap<Uuid, ConversationSession>()
+    /** Complete user-authored turns waiting for the active response to finish. */
+    private val queuedMessages = ConcurrentHashMap<Uuid, ConcurrentLinkedQueue<List<UIMessagePart>>>()
     private val _sessionsVersion = MutableStateFlow(0L)
 
     /**
@@ -583,6 +586,31 @@ class ChatService(
             }
         }
         session.setJob(job)
+        job.invokeOnCompletion {
+            if (session.getJob() === job) {
+                queuedMessages[conversationId]?.poll()?.let { queuedContent ->
+                    if (queuedMessages[conversationId]?.isEmpty() == true) {
+                        queuedMessages.remove(conversationId)
+                    }
+                    sendMessage(conversationId, queuedContent, answer = true)
+                }
+            }
+        }
+    }
+
+    /**
+     * Retains a complete user-authored turn until the active response completes. The queued
+     * turn uses normal input transformation, enabled skills, and tool approval when it starts.
+     */
+    fun queueMessage(conversationId: Uuid, content: List<UIMessagePart>): Boolean {
+        if (content.isEmptyInputMessage()) return false
+        val session = getOrCreateSession(conversationId)
+        if (session.getJob()?.isActive != true) {
+            sendMessage(conversationId, content, answer = true)
+            return false
+        }
+        queuedMessages.getOrPut(conversationId) { ConcurrentLinkedQueue() }.offer(content)
+        return true
     }
 
     /**

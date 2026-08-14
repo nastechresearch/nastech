@@ -52,7 +52,10 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -105,12 +108,15 @@ import me.rerere.hugeicons.stroke.Tick01
 import me.rerere.hugeicons.stroke.Zap
 import me.rerere.hugeicons.stroke.Voice
 import io.github.nastechresearch.nastech.R
+import io.github.nastechresearch.nastech.data.ai.tools.LocalToolOption
 import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.datastore.Settings
 import io.github.nastechresearch.nastech.data.datastore.getCurrentAssistant
 import io.github.nastechresearch.nastech.data.datastore.getCurrentChatModel
 import io.github.nastechresearch.nastech.data.datastore.getQuickMessagesOfAssistant
 import io.github.nastechresearch.nastech.data.files.FilesManager
+import io.github.nastechresearch.nastech.data.files.SkillManager
+import io.github.nastechresearch.nastech.data.files.SkillMetadata
 import io.github.nastechresearch.nastech.data.model.Assistant
 import io.github.nastechresearch.nastech.data.model.QuickMessage
 import io.github.nastechresearch.nastech.ui.components.ai.completion.ChatCompletionContext
@@ -147,6 +153,7 @@ fun ChatInput(
     onCancelClick: () -> Unit,
     onSendClick: () -> Unit,
     onLongSendClick: () -> Unit,
+    onQueueClick: () -> Unit,
 ) {
     val toaster = LocalToaster.current
     val assistant = settings.getCurrentAssistant()
@@ -179,6 +186,18 @@ fun ChatInput(
         focusManager.clearFocus(force = true)
         keyboardController?.hide()
         if (loading) onCancelClick() else onLongSendClick()
+    }
+
+    fun steerGeneration() {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        onSendClick()
+    }
+
+    fun queueDraft() {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        onQueueClick()
     }
 
     val asr = LocalASRState.current
@@ -318,192 +337,69 @@ fun ChatInput(
                         }
                     }
 
+                    var showComposerActions by remember { mutableStateOf(false) }
+                    val hasDraft = !state.isEmpty()
+                    val voiceReady = (asrState.isAvailable || asrState.isRecording) && !hasDraft
+                    val isVoiceActive = asrState.isRecording
+
                     TextInputRow(
                         state = state,
                         completionProviders = completionProviders,
-                        onSendMessage = { sendMessage() }
+                        onSendMessage = { sendMessage() },
+                        onUpdateAssistant = onUpdateAssistant,
+                        leadingAction = {
+                            ActionIconButton(onClick = { showComposerActions = true }) {
+                                Icon(
+                                    imageVector = HugeIcons.Add01,
+                                    contentDescription = stringResource(R.string.more_options),
+                                )
+                            }
+                        },
+                        trailingAction = {
+                            CompactComposerPrimaryAction(
+                                loading = loading,
+                                hasDraft = hasDraft,
+                                voiceReady = voiceReady,
+                                isVoiceActive = isVoiceActive,
+                                borderColor = if (inputGlass.enabled) {
+                                    inputGlass.border
+                                } else {
+                                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                                },
+                                onClick = {
+                                    when {
+                                        loading && hasDraft -> steerGeneration()
+                                        loading -> sendMessage()
+                                        isVoiceActive -> toggleVoiceSession()
+                                        hasDraft -> sendMessage()
+                                        voiceReady -> toggleVoiceSession()
+                                    }
+                                },
+                                onLongClick = {
+                                    when {
+                                        hasDraft && loading -> queueDraft()
+                                        hasDraft && !isVoiceActive -> sendMessageWithoutAnswer()
+                                    }
+                                },
+                            )
+                        },
                     )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 2.dp, top = 2.dp, end = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        ActionIconButton(onClick = onMoreClick) {
-                            Icon(
-                                imageVector = HugeIcons.Add01,
-                                contentDescription = stringResource(R.string.more_options),
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            // Model Picker
-                            ModelSelector(
-                                modelId = assistant.chatModelId ?: settings.chatModelId,
-                                providers = settings.providers,
-                                onSelect = {
-                                    onUpdateChatModel(it)
-                                },
-                                type = ModelType.CHAT,
-                                onlyIcon = true,
-                                modifier = Modifier,
-                            )
-
-                            // Search
-                            val enableSearchMsg = stringResource(R.string.web_search_enabled)
-                            val disableSearchMsg = stringResource(R.string.web_search_disabled)
-                            val chatModel = settings.getCurrentChatModel()
-                            SearchPickerButton(
-                                enableSearch = enableSearch,
-                                settings = settings,
-                                onToggleSearch = { enabled ->
-                                    onToggleSearch(enabled)
-                                    toaster.show(
-                                        message = if (enabled) enableSearchMsg else disableSearchMsg,
-                                        duration = 1.seconds,
-                                        type = if (enabled) {
-                                            ToastType.Success
-                                        } else {
-                                            ToastType.Normal
-                                        }
-                                    )
-                                },
-                                onUpdateSearchService = onUpdateSearchService,
-                                model = chatModel,
-                            )
-
-                            // Reasoning
-                            val model = settings.getCurrentChatModel()
-                            if (model?.abilities?.contains(ModelAbility.REASONING) == true) {
-                                ReasoningButton(
-                                    reasoningLevel = assistant.reasoningLevel,
-                                    onUpdateReasoningLevel = {
-                                        onUpdateAssistant(assistant.copy(reasoningLevel = it))
-                                    },
-                                    onlyIcon = true,
-                                )
-                            }
-
-                        }
-
-                        val hasDraft = !state.isEmpty()
-                        val voiceReady = (asrState.isAvailable || asrState.isRecording) && !hasDraft
-                        val isVoiceActive = asrState.isRecording
-                        val primaryEnabled = loading || isVoiceActive || hasDraft || voiceReady
-                        val primaryContainerColor = when {
-                            loading -> MaterialTheme.colorScheme.errorContainer
-                            isVoiceActive -> MaterialTheme.colorScheme.secondaryContainer
-                            hasDraft -> MaterialTheme.colorScheme.primary
-                            voiceReady -> MaterialTheme.colorScheme.primaryContainer
-                            else -> MaterialTheme.colorScheme.surfaceContainerHigh
-                        }
-                        val primaryContentColor = when {
-                            loading -> MaterialTheme.colorScheme.onErrorContainer
-                            isVoiceActive -> MaterialTheme.colorScheme.onSecondaryContainer
-                            hasDraft -> MaterialTheme.colorScheme.onPrimary
-                            voiceReady -> MaterialTheme.colorScheme.onPrimaryContainer
-                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        }
-                        val sendPulse = rememberInfiniteTransition(label = "composer_send_pulse")
-                        val sendGlowScale by sendPulse.animateFloat(
-                            initialValue = 0.84f,
-                            targetValue = 1.20f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1_200, easing = LinearEasing),
-                                repeatMode = RepeatMode.Reverse,
-                            ),
-                            label = "composer_send_glow_scale",
+                    if (showComposerActions) {
+                        CompactComposerActionSheet(
+                            assistant = assistant,
+                            settings = settings,
+                            enableSearch = enableSearch,
+                            onDismiss = { showComposerActions = false },
+                            onOpenAttachments = {
+                                showComposerActions = false
+                                onMoreClick()
+                            },
+                            onUpdateChatModel = onUpdateChatModel,
+                            onToggleSearch = onToggleSearch,
+                            onUpdateSearchService = onUpdateSearchService,
+                            onUpdateAssistant = onUpdateAssistant,
                         )
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .testTag("chat_primary_action_button")
-                                .clip(CircleShape)
-                                .combinedClickable(
-                                    enabled = primaryEnabled,
-                                    onClick = {
-                                        when {
-                                            loading -> sendMessage()
-                                            isVoiceActive -> toggleVoiceSession()
-                                            hasDraft -> sendMessage()
-                                            voiceReady -> toggleVoiceSession()
-                                        }
-                                    },
-                                    onLongClick = {
-                                        if (hasDraft && !loading && !isVoiceActive) sendMessageWithoutAnswer()
-                                    },
-                                ),
-                        ) {
-                            if ((hasDraft && !loading) || isVoiceActive) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .scale(sendGlowScale)
-                                        .clip(CircleShape),
-                                ) {
-                                    Surface(
-                                        modifier = Modifier.fillMaxSize(),
-                                        shape = CircleShape,
-                                        color = if (isVoiceActive) {
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.26f)
-                                        } else {
-                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.24f)
-                                        },
-                                        content = {},
-                                    )
-                                }
-                            }
-                            Surface(
-                                modifier = Modifier.size(42.dp),
-                                shape = CircleShape,
-                                color = primaryContainerColor,
-                                border = BorderStroke(
-                                    1.dp,
-                                    if (inputGlass.enabled) inputGlass.border else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                                ),
-                                content = {},
-                            )
-                            when {
-                                loading -> {
-                                    KeepScreenOn()
-                                    Icon(
-                                        imageVector = HugeIcons.Cancel01,
-                                        contentDescription = stringResource(R.string.stop),
-                                        tint = primaryContentColor,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-
-                                isVoiceActive -> Icon(
-                                    imageVector = HugeIcons.Voice,
-                                    contentDescription = "End Nastech Voice call",
-                                    tint = primaryContentColor,
-                                    modifier = Modifier.size(21.dp),
-                                )
-
-                                hasDraft -> Icon(
-                                    imageVector = HugeIcons.ArrowUp02,
-                                    contentDescription = stringResource(R.string.send),
-                                    tint = primaryContentColor,
-                                    modifier = Modifier.size(21.dp),
-                                )
-
-                                else -> Icon(
-                                    imageVector = HugeIcons.Voice,
-                                    contentDescription = "Start Nastech Voice call",
-                                    tint = primaryContentColor,
-                                    modifier = Modifier.size(21.dp),
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -533,14 +429,214 @@ private fun ActionIconButton(
 }
 
 @Composable
+private fun CompactComposerPrimaryAction(
+    loading: Boolean,
+    hasDraft: Boolean,
+    voiceReady: Boolean,
+    isVoiceActive: Boolean,
+    borderColor: Color,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val enabled = loading || isVoiceActive || hasDraft || voiceReady
+    val containerColor = when {
+        loading -> MaterialTheme.colorScheme.errorContainer
+        isVoiceActive -> MaterialTheme.colorScheme.secondaryContainer
+        hasDraft -> MaterialTheme.colorScheme.primary
+        voiceReady -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceContainerHigh
+    }
+    val contentColor = when {
+        loading -> MaterialTheme.colorScheme.onErrorContainer
+        isVoiceActive -> MaterialTheme.colorScheme.onSecondaryContainer
+        hasDraft -> MaterialTheme.colorScheme.onPrimary
+        voiceReady -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    }
+    if (loading) KeepScreenOn()
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(42.dp)
+            .testTag("chat_primary_action_button")
+            .clip(CircleShape)
+            .combinedClickable(
+                enabled = enabled,
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = CircleShape,
+            color = containerColor,
+            border = BorderStroke(1.dp, borderColor),
+            content = {},
+        )
+        when {
+            loading -> Icon(
+                imageVector = HugeIcons.Cancel01,
+                contentDescription = stringResource(R.string.stop),
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
+            )
+            isVoiceActive -> Icon(
+                imageVector = HugeIcons.Voice,
+                contentDescription = "End Nastech Voice call",
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
+            )
+            hasDraft -> Icon(
+                imageVector = HugeIcons.ArrowUp02,
+                contentDescription = stringResource(R.string.send),
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
+            )
+            else -> Icon(
+                imageVector = HugeIcons.Voice,
+                contentDescription = "Start Nastech Voice call",
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactComposerActionSheet(
+    assistant: Assistant,
+    settings: Settings,
+    enableSearch: Boolean,
+    onDismiss: () -> Unit,
+    onOpenAttachments: () -> Unit,
+    onUpdateChatModel: (Model) -> Unit,
+    onToggleSearch: (Boolean) -> Unit,
+    onUpdateSearchService: (Int) -> Unit,
+    onUpdateAssistant: (Assistant) -> Unit,
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    val chatModel = settings.getCurrentChatModel()
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = glassSurface(
+            GlassSurface.CHAT_INPUT,
+            MaterialTheme.colorScheme.surfaceContainerHigh,
+        ).container,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Add to message", style = MaterialTheme.typography.titleMedium)
+            CompactComposerActionItem("Camera", "Take a photo", HugeIcons.Camera01, onOpenAttachments)
+            CompactComposerActionItem("Photos", "Choose images or video", HugeIcons.Image02, onOpenAttachments)
+            CompactComposerActionItem("Files", "Attach a document or audio", HugeIcons.File01, onOpenAttachments)
+            CompactComposerActionItem("Plugins", "Open connected tools", HugeIcons.Zap, onOpenAttachments)
+
+            Spacer(Modifier.padding(top = 4.dp))
+            Text("Chat controls", style = MaterialTheme.typography.titleMedium)
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    ModelSelector(
+                        modelId = assistant.chatModelId ?: settings.chatModelId,
+                        providers = settings.providers,
+                        onSelect = onUpdateChatModel,
+                        type = ModelType.CHAT,
+                        onlyIcon = false,
+                    )
+                    SearchPickerButton(
+                        enableSearch = enableSearch,
+                        settings = settings,
+                        onToggleSearch = onToggleSearch,
+                        onUpdateSearchService = onUpdateSearchService,
+                        model = chatModel,
+                    )
+                }
+            }
+            if (chatModel?.abilities?.contains(ModelAbility.REASONING) == true) {
+                ReasoningButton(
+                    reasoningLevel = assistant.reasoningLevel,
+                    onUpdateReasoningLevel = { level ->
+                        onUpdateAssistant(assistant.copy(reasoningLevel = level))
+                    },
+                    onlyIcon = false,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Spacer(Modifier.padding(bottom = 10.dp))
+        }
+    }
+}
+
+@Composable
+private fun CompactComposerActionItem(
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.42f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun TextInputRow(
     state: ChatInputState,
     completionProviders: List<ChatCompletionProvider>,
     onSendMessage: () -> Unit,
+    onUpdateAssistant: (Assistant) -> Unit,
+    leadingAction: @Composable () -> Unit,
+    trailingAction: @Composable () -> Unit,
 ) {
     val settings = LocalSettings.current
     val filesManager: FilesManager = koinInject()
+    val skillManager: SkillManager = koinInject()
     val assistant = settings.getCurrentAssistant()
+    val installedSkills = remember { skillManager.listSkills() }
     val quickMessages = remember(settings.quickMessages, assistant.quickMessageIds) {
         settings.getQuickMessagesOfAssistant(assistant)
     }
@@ -660,6 +756,48 @@ private fun TextInputRow(
             )
         }
 
+        val mentionMatch = remember(state.textContent.text) {
+            Regex("""(?:^|\s)@([A-Za-z0-9_-]*)$""").find(state.textContent.text)
+        }
+        val skillQuery = mentionMatch?.groupValues?.getOrNull(1).orEmpty()
+        val matchingSkills = remember(skillQuery, installedSkills) {
+            installedSkills.filter { skill ->
+                skillQuery.isBlank() ||
+                    skill.name.contains(skillQuery, ignoreCase = true) ||
+                    skill.description.contains(skillQuery, ignoreCase = true)
+            }.take(8)
+        }
+        val matchingTools = remember(skillQuery, assistant.localTools) {
+            assistant.localTools.filter { tool ->
+                skillQuery.isBlank() || tool.mentionLabel().contains(skillQuery, ignoreCase = true)
+            }.take(8)
+        }
+        if (mentionMatch != null && (matchingSkills.isNotEmpty() || matchingTools.isNotEmpty())) {
+            SkillMentionPopup(
+                skills = matchingSkills,
+                tools = matchingTools,
+                onSelect = { skill ->
+                    val mentionStart = state.textContent.text.lastIndexOf('@').coerceAtLeast(0)
+                    val replacement = "@${skill.name} "
+                    state.textContent.edit {
+                        replace(mentionStart, state.text.length, replacement)
+                        selection = TextRange(mentionStart + replacement.length)
+                    }
+                    onUpdateAssistant(
+                        assistant.copy(enabledSkills = assistant.enabledSkills + skill.name),
+                    )
+                },
+                onToolSelect = { tool ->
+                    val mentionStart = state.textContent.text.lastIndexOf('@').coerceAtLeast(0)
+                    val replacement = "@${tool.mentionToken()} "
+                    state.textContent.edit {
+                        replace(mentionStart, state.text.length, replacement)
+                        selection = TextRange(mentionStart + replacement.length)
+                    }
+                },
+            )
+        }
+
         TextField(
             state = state.textContent,
             modifier = Modifier
@@ -688,21 +826,24 @@ private fun TextInputRow(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
             ),
-            trailingIcon = {
-                if (isFocused) {
-                    IconButton(
-                        onClick = {
-                            isFullScreen = !isFullScreen
-                        }) {
-                        Icon(HugeIcons.FullScreen, null)
+            leadingIcon = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    leadingAction()
+                    if (quickMessages.isNotEmpty()) {
+                        QuickMessageButton(quickMessages = quickMessages, state = state)
                     }
                 }
             },
-            leadingIcon = if (quickMessages.isNotEmpty()) {
-                {
-                    QuickMessageButton(quickMessages = quickMessages, state = state)
+            trailingIcon = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isFocused) {
+                        IconButton(onClick = { isFullScreen = !isFullScreen }) {
+                            Icon(HugeIcons.FullScreen, null)
+                        }
+                    }
+                    trailingAction()
                 }
-            } else null,
+            },
         )
         if (isFullScreen) {
             FullScreenEditor(state = state) {
@@ -779,6 +920,126 @@ private fun CompletionPopup(
         }
     }
 }
+
+@Composable
+private fun SkillMentionPopup(
+    skills: List<SkillMetadata>,
+    tools: List<LocalToolOption>,
+    onSelect: (SkillMetadata) -> Unit,
+    onToolSelect: (LocalToolOption) -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 288.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = glassSurface(
+            GlassSurface.CHAT_INPUT,
+            MaterialTheme.colorScheme.surfaceContainerHigh,
+        ).container,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+        ) {
+            Text(
+                text = "Skills and tools",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            )
+            skills.forEach { skill ->
+                Surface(
+                    onClick = { onSelect(skill) },
+                    color = Color.Transparent,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(32.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f),
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = HugeIcons.Zap,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(17.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("@${skill.name}", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                text = skill.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+            if (tools.isNotEmpty()) {
+                Text(
+                    text = "Agent tools",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+                tools.forEach { tool ->
+                    Surface(
+                        onClick = { onToolSelect(tool) },
+                        color = Color.Transparent,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(32.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = HugeIcons.Zap,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(17.dp),
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                    )
+                                }
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("@${tool.mentionLabel()}", style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    text = "Enabled agent tool",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LocalToolOption.mentionToken(): String = javaClass.simpleName
+
+private fun LocalToolOption.mentionLabel(): String =
+    mentionToken().replace(Regex("([a-z])([A-Z])"), "$1 $2")
 
 private fun ChatInputState.applyCompletion(
     replacementRange: TextRange,

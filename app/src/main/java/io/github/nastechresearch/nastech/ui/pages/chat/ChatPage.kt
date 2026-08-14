@@ -406,6 +406,15 @@ private fun ChatPageContent(
                     onMoreClick = {
                         showFilesSheet = true
                     },
+                    onQueueClick = {
+                        if (vm.queueMessage(inputState.getContents())) {
+                            inputState.clearInput()
+                            toaster.show(
+                                message = "Queued after the current response",
+                                type = ToastType.Info,
+                            )
+                        }
+                    },
                 )
             },
             containerColor = Color.Transparent,
