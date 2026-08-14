@@ -63,7 +63,6 @@ import io.github.nastechresearch.nastech.data.ai.tools.local.searchSmsTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.setBrightnessTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.setVolumeTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.shareTool
-import io.github.nastechresearch.nastech.data.ai.tools.local.speechToTextTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.stopMediaTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.storageTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.swipeTool
@@ -99,8 +98,6 @@ import io.github.nastechresearch.nastech.data.ai.tools.local.sshUploadTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.writeTextFileTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.showImageTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.openFileTool
-import io.github.nastechresearch.nastech.data.ai.tools.local.transcribeAudioFileTool
-import io.github.nastechresearch.nastech.data.ai.tools.local.whisperStatusTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.listFilesTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.readFileTool
 import io.github.nastechresearch.nastech.data.ai.tools.local.writeBinaryFileTool

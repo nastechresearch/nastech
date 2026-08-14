@@ -1458,3 +1458,63 @@ class DoctorChecks(
         }
     }
 }
+
+/**
+ * Pure decision logic backing the "storage.gallery_orphans" row: given the resolved
+ * absolute paths of every generated-image DB record, report the total and how many no
+ * longer have a backing file on disk. It is kept top-level so it remains unit-testable
+ * on the JVM without an Android Context.
+ */
+internal data class GalleryOrphanStatus(val total: Int, val orphanCount: Int)
+
+internal fun galleryOrphanStatus(absolutePaths: List<String>): GalleryOrphanStatus =
+    GalleryOrphanStatus(
+        total = absolutePaths.size,
+        orphanCount = absolutePaths.count { path -> !File(path).exists() },
+    )
+
+/**
+ * Pure decision logic backing the "assistant.subagent_profiles" row: which configured
+ * [SubAgentProfile]s have a `modelId` that no longer resolves to a chat model of an
+ * enabled provider.
+ */
+internal data class SubAgentProfileStatus(val total: Int, val broken: List<String>)
+
+internal fun subAgentProfileStatus(
+    profiles: List<SubAgentProfile>,
+    providers: List<ProviderSetting>,
+): SubAgentProfileStatus = SubAgentProfileStatus(
+    total = profiles.size,
+    broken = profiles.filter { profile ->
+        val modelId = profile.modelId ?: return@filter false
+        SubAgentModelResolver.resolve(modelId.toString(), providers) is SubAgentModelResolver.Result.Failed
+    }.map { it.name },
+)
+
+/** Summarises configured, enabled, and connected MCP server state for Doctor. */
+internal data class McpServerSummary(
+    val configured: Int,
+    val enabled: Int,
+    val connected: Int,
+    val enabledNotConnected: List<String>,
+)
+
+internal fun mcpServerSummary(servers: List<Triple<String, Boolean, Boolean>>): McpServerSummary =
+    McpServerSummary(
+        configured = servers.size,
+        enabled = servers.count { (_, enabled, _) -> enabled },
+        connected = servers.count { (_, _, connected) -> connected },
+        enabledNotConnected = servers.filter { (_, enabled, connected) -> enabled && !connected }
+            .map { (name, _, _) -> name },
+    )
+
+/** A bundled skill whose stored seed hash is missing or differs from the current hash. */
+internal data class SkillSeedEntry(
+    val name: String,
+    val isBundled: Boolean,
+    val storedHash: String?,
+    val currentHash: String?,
+)
+
+internal fun staleSeedSkillNames(entries: List<SkillSeedEntry>): List<String> =
+    entries.filter { it.isBundled && it.storedHash != it.currentHash }.map { it.name }

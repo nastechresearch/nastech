@@ -21,7 +21,6 @@ import io.github.nastechresearch.nastech.ui.pages.extensions.workspace.Workspace
 import io.github.nastechresearch.nastech.ui.pages.setting.SettingVM
 import io.github.nastechresearch.nastech.ui.pages.setting.browser.SettingBrowserViewModel
 import io.github.nastechresearch.nastech.ui.pages.setting.termux.SettingTermuxViewModel
-import io.github.nastechresearch.nastech.ui.pages.setting.locallm.SettingLocalLlmViewModel
 import io.github.nastechresearch.nastech.ui.pages.share.handler.ShareHandlerVM
 import io.github.nastechresearch.nastech.ui.pages.translator.TranslatorVM
 import io.github.nastechresearch.nastech.ui.pages.setting.doctor.DoctorViewModel
