@@ -50,6 +50,8 @@ import io.github.nastechresearch.nastech.data.datastore.GlassSurfaceAppearance
 import io.github.nastechresearch.nastech.ui.components.nav.BackButton
 import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.plus
 import org.koin.androidx.compose.koinViewModel
 
@@ -169,17 +171,14 @@ fun SettingGlassAppearancePage(vm: SettingVM = koinViewModel()) {
 
 @Composable
 private fun GlassPreview(profile: GlassAppearance) {
-    val tint = Color(profile.tintArgb)
-    val container = if (profile.pureBlack) Color.Black else tint
-    val primaryText = profile.primaryTextArgb?.let(::Color) ?: MaterialTheme.colorScheme.onSurface
-    val secondaryText = profile.secondaryTextArgb?.let(::Color) ?: MaterialTheme.colorScheme.onSurfaceVariant
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surface = glassSurface(GlassSurface.SETTINGS, fallback)
+    val primaryText = glassContentColor(GlassSurface.SETTINGS, fallback)
+    val secondaryText = primaryText.copy(alpha = 0.76f)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = container.copy(alpha = profile.transparency.coerceIn(0.08f, 0.98f))),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            Color.White.copy(alpha = profile.borderOpacity.coerceIn(0f, 1f)),
-        ),
+        colors = CardDefaults.cardColors(containerColor = surface.container, contentColor = primaryText),
+        border = androidx.compose.foundation.BorderStroke(1.dp, surface.border),
     ) {
         Column(
             modifier = Modifier.padding(20.dp),

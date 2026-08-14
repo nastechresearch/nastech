@@ -48,7 +48,14 @@ class SkillsVM(
         private const val CATALOG_CACHE_FILE = "skill-catalog.json"
         private const val CURATED_CATALOG_URL =
             "https://raw.githubusercontent.com/nastechresearch/nastech/main/app/src/main/assets/skill-catalog.json"
+        private const val MAX_BATCH_INSTALLS = 20
     }
+
+    data class BatchInstallReport(
+        val requested: Int,
+        val installed: Int,
+        val failed: List<String>,
+    )
     private val _skills = MutableStateFlow<List<SkillMetadata>>(emptyList())
     val skills = _skills.asStateFlow()
 
@@ -189,26 +196,41 @@ class SkillsVM(
      */
     fun installFromCatalog(entry: CatalogEntry, onResult: (success: Boolean, message: String) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
-            if (entry.isBundled) {
-                _skills.value = skillManager.listSkills()
-                withContext(Dispatchers.Main) { onResult(true, entry.name) }
-                return@launch
-            }
-            val url = entry.sourceUrl
-            if (url.isNullOrBlank()) {
-                withContext(Dispatchers.Main) { onResult(false, "skill_catalog_install_failed") }
-                return@launch
-            }
-            val result = withTimeoutOrNull(30_000) {
-                urlImporter.importFromUrl(url)
-            }
-            val (ok, msg) = when (result) {
-                null -> false to "skill_catalog_install_failed"
-                is SkillUrlImporter.Result.Ok -> true to result.metadata.name
-                is SkillUrlImporter.Result.Err -> false to result.detail
+            val (ok, message) = installCatalogEntry(entry)
+            _skills.value = skillManager.listSkills()
+            withContext(Dispatchers.Main) { onResult(ok, message) }
+        }
+    }
+
+    /**
+     * Installs a user-selected collection from the already validated catalogue. Downloads are
+     * deliberately sequential: this avoids uncontrolled network fan-out and preserves clear
+     * per-skill failure reporting when one source is unavailable.
+     */
+    fun installFromCatalogBatch(entries: List<CatalogEntry>, onResult: (BatchInstallReport) -> Unit) {
+        val batch = entries.distinctBy { it.name }.take(MAX_BATCH_INSTALLS)
+        viewModelScope.launch(Dispatchers.IO) {
+            val failures = mutableListOf<String>()
+            var installed = 0
+            batch.forEach { entry ->
+                val (ok, detail) = installCatalogEntry(entry)
+                if (ok) installed++ else failures += "${entry.name}: $detail"
             }
             _skills.value = skillManager.listSkills()
-            withContext(Dispatchers.Main) { onResult(ok, msg) }
+            withContext(Dispatchers.Main) {
+                onResult(BatchInstallReport(batch.size, installed, failures))
+            }
+        }
+    }
+
+    private suspend fun installCatalogEntry(entry: CatalogEntry): Pair<Boolean, String> {
+        if (entry.isBundled) return true to entry.name
+        val url = entry.sourceUrl ?: return false to "skill_catalog_install_failed"
+        val result = withTimeoutOrNull(30_000) { urlImporter.importFromUrl(url) }
+        return when (result) {
+            null -> false to "skill_catalog_install_failed"
+            is SkillUrlImporter.Result.Ok -> true to result.metadata.name
+            is SkillUrlImporter.Result.Err -> false to result.detail
         }
     }
 

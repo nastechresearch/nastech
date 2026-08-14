@@ -17,6 +17,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -111,8 +112,14 @@ fun NastechTheme(
     val extendColors = if (darkTheme) ExtendDarkColors else ExtendLightColors
     val appearanceColorScheme = remember(colorSchemeConverted, settings.glassAppearance) {
         val appearance = settings.glassAppearance
-        // The canvas may be pure black, while each panel uses the selected near-black family tint.
-        val visibleSurface = Color(appearance.tintArgb)
+        // Match the panel composition used by glassSurface(): foreground selection must be
+        // evaluated against the actual translucent panel over the active canvas, not the stored
+        // tint in isolation. This makes the global transparency and colour controls safe for
+        // pure-black, light, and arbitrary custom-tint modes.
+        val requestedOpacity = appearance.transparency.coerceIn(0.08f, 0.98f)
+        val panelOpacity = (0.06f + requestedOpacity * 0.74f).coerceIn(0.12f, 0.80f)
+        val canvas = if (appearance.pureBlack && darkTheme) AMOLED_DARK_BACKGROUND else colorSchemeConverted.background
+        val visibleSurface = Color(appearance.tintArgb).copy(alpha = panelOpacity).compositeOver(canvas)
         val primaryText = contrastSafeForeground(
             requested = appearance.primaryTextArgb?.let(::Color),
             background = visibleSurface,

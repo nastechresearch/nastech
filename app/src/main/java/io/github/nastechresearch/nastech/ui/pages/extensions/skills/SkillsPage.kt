@@ -270,6 +270,21 @@ fun SkillsPage() {
                     onDone()
                 }
             },
+            onBatchInstall = { entries, onDone ->
+                vm.installFromCatalogBatch(entries) { report ->
+                    val summary = if (report.failed.isEmpty()) {
+                        "Installed ${report.installed} of ${report.requested} selected skills"
+                    } else {
+                        "Installed ${report.installed} of ${report.requested}. ${report.failed.size} source${if (report.failed.size == 1) "" else "s"} could not be installed."
+                    }
+                    if (report.failed.isEmpty()) {
+                        toaster.show(summary, type = ToastType.Success)
+                    } else {
+                        toaster.show(summary)
+                    }
+                    onDone()
+                }
+            },
             onDismiss = { showCatalog = false },
         )
     }
@@ -282,10 +297,13 @@ private fun FeaturedCatalogSheet(
     installedNames: Set<String>,
     onRefresh: (onResult: () -> Unit) -> Unit,
     onInstall: (CatalogEntry, onResult: () -> Unit) -> Unit,
+    onBatchInstall: (List<CatalogEntry>, onResult: () -> Unit) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var installing by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var selectedNames by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var batchInstalling by remember { mutableStateOf(false) }
     var refreshing by remember { mutableStateOf(false) }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -306,13 +324,29 @@ private fun FeaturedCatalogSheet(
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(
-                    enabled = !refreshing,
+                    enabled = !refreshing && !batchInstalling,
                     onClick = {
                         refreshing = true
                         onRefresh { refreshing = false }
                     },
                 ) {
-                    Text(if (refreshing) "Refreshing…" else "Refresh sources")
+                    Text(if (refreshing) "Refreshing…" else "Refresh")
+                }
+                TextButton(
+                    enabled = selectedNames.isNotEmpty() && !batchInstalling,
+                    onClick = {
+                        val selected = entries.filter { it.name in selectedNames && it.name !in installedNames }
+                        if (selected.isEmpty()) return@TextButton
+                        batchInstalling = true
+                        installing = installing + selected.map { it.name }
+                        onBatchInstall(selected) {
+                            installing = installing - selected.map { it.name }.toSet()
+                            selectedNames = emptySet()
+                            batchInstalling = false
+                        }
+                    },
+                ) {
+                    Text(if (batchInstalling) "Installing…" else "Install ${selectedNames.size}")
                 }
                 IconButton(onClick = onDismiss) {
                     Icon(Lucide.X, contentDescription = stringResource(R.string.cancel))
@@ -334,6 +368,10 @@ private fun FeaturedCatalogSheet(
                             entry = entry,
                             installed = entry.name in installedNames,
                             installing = entry.name in installing,
+                            selected = entry.name in selectedNames,
+                            onSelectedChange = { selected ->
+                                selectedNames = if (selected) selectedNames + entry.name else selectedNames - entry.name
+                            },
                             onInstall = {
                                 installing = installing + entry.name
                                 onInstall(entry) {
@@ -353,6 +391,8 @@ private fun CatalogRow(
     entry: CatalogEntry,
     installed: Boolean,
     installing: Boolean,
+    selected: Boolean,
+    onSelectedChange: (Boolean) -> Unit,
     onInstall: () -> Unit,
 ) {
     Card(
@@ -382,20 +422,28 @@ private fun CatalogRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
             )
-            FilledTonalButton(
-                onClick = onInstall,
-                enabled = !installed && !installing,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
+            androidx.compose.foundation.layout.Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    when {
-                        installed -> stringResource(R.string.skill_catalog_installed)
-                        installing -> stringResource(R.string.skill_catalog_installing)
-                        else -> stringResource(R.string.skill_catalog_install)
-                    }
-                )
+                TextButton(
+                    onClick = { onSelectedChange(!selected) },
+                    enabled = !installed && !installing,
+                    modifier = Modifier.weight(1f),
+                ) { Text(if (selected) "Selected" else "Select") }
+                FilledTonalButton(
+                    onClick = onInstall,
+                    enabled = !installed && !installing,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        when {
+                            installed -> stringResource(R.string.skill_catalog_installed)
+                            installing -> stringResource(R.string.skill_catalog_installing)
+                            else -> stringResource(R.string.skill_catalog_install)
+                        }
+                    )
+                }
             }
         }
     }

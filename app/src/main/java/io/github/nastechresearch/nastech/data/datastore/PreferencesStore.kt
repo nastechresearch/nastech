@@ -29,6 +29,7 @@ import me.rerere.ai.provider.Model
 import me.rerere.ai.provider.ProviderSetting
 import io.github.nastechresearch.nastech.AppScope
 import io.github.nastechresearch.nastech.data.ai.mcp.McpServerConfig
+import io.github.nastechresearch.nastech.data.ai.tools.LocalToolOption
 import io.github.nastechresearch.nastech.data.gemini.DENIED_MODEL_IDS
 import io.github.nastechresearch.nastech.data.ai.prompts.DEFAULT_COMPRESS_PROMPT
 import io.github.nastechresearch.nastech.data.ai.prompts.DEFAULT_OCR_PROMPT
@@ -476,6 +477,22 @@ class SettingsStore(
                     assistants.add(defaultAssistant.copy())
                 }
             }
+            // Upgrade only the untouched historical blank default. Any name, prompt, custom
+            // tool choice, web setting, model selection, MCP link, or other personalization
+            // leaves the user's assistant exactly as it is.
+            val strengthenedDefault = DEFAULT_ASSISTANTS.first { it.id == DEFAULT_ASSISTANT_ID }
+            assistants = assistants.map { assistant ->
+                val untouchedLegacyDefault = assistant.id == DEFAULT_ASSISTANT_ID &&
+                    assistant.name.isBlank() &&
+                    assistant.systemPrompt.isBlank() &&
+                    assistant.chatModelId == null &&
+                    assistant.mcpServers.isEmpty() &&
+                    !assistant.enableWebSearch &&
+                    assistant.localTools == listOf(LocalToolOption.TimeInfo)
+                if (untouchedLegacyDefault) {
+                    strengthenedDefault.copy(enabledSkills = assistant.enabledSkills + strengthenedDefault.enabledSkills)
+                } else assistant
+            }.toMutableList()
             // One-shot upgrade for existing installs that pre-date the agent-core auto-load:
             // if a default-IDed assistant has an empty enabledSkills, treat it as fresh and
             // pin agent-core. Users who deliberately added other skills are untouched.
@@ -1118,8 +1135,52 @@ internal val DEFAULT_AUTO_ENABLED_SKILLS = setOf("autonomous-agent", "openclaw-c
 internal val DEFAULT_ASSISTANTS = listOf(
     Assistant(
         id = DEFAULT_ASSISTANT_ID,
-        name = "",
-        systemPrompt = "",
+        name = "Nastech Agent",
+        systemPrompt = """
+            You are Nastech Agent: a capable, practical assistant that turns a user's goal into a
+            complete, well-organised result. Work in the user's language unless they request
+            another. Think before acting, use connected tools only when they materially help, and
+            keep the user informed with concise progress and a clear outcome.
+
+            ## Operating principles
+            - Clarify only when a missing detail changes the result; otherwise make a sensible,
+              transparent assumption and continue.
+            - Use web, browser, files, skills, MCP servers, workflows, voice, and sub-agents as
+              one connected workspace. Do not create duplicate or isolated feature paths.
+            - Cite sources for factual research. Present links as compact previews where possible.
+            - Ask for confirmation before any irreversible action, external post, payment,
+              credential change, deletion, or other sensitive side effect.
+            - When a tool is unavailable, explain the limitation plainly and offer the closest
+              supported alternative.
+
+            ## Delivery
+            Give complete answers, practical next actions, and clean Markdown. Keep tool activity
+            compact so the conversation remains easy to read.
+        """.trimIndent(),
+        enableMemory = true,
+        enableRecentChatsReference = true,
+        enableWebSearch = true,
+        fastPathRouterEnabled = true,
+        localTools = listOf(
+            LocalToolOption.TimeInfo,
+            LocalToolOption.Clipboard,
+            LocalToolOption.Tts,
+            LocalToolOption.AskUser,
+            LocalToolOption.StorageInfo,
+            LocalToolOption.Download,
+            LocalToolOption.MediaScanner,
+            LocalToolOption.SpeechToText,
+            LocalToolOption.Share,
+            LocalToolOption.Files,
+            LocalToolOption.Browser,
+            LocalToolOption.McpControl,
+            LocalToolOption.SubAgents,
+            LocalToolOption.Workflows,
+            LocalToolOption.SkillImport,
+            LocalToolOption.Reliability,
+            LocalToolOption.CostGuards,
+            LocalToolOption.ExternalAutomation,
+        ),
         // The agent-core skill bundle (SOUL/HEARTBEAT/TOOLS) ships with the app and is what
         // teaches every model "you are running on Nastech, here are the tools, here is how
         // to avoid loops". Auto-enabling it on default assistants means new users get an

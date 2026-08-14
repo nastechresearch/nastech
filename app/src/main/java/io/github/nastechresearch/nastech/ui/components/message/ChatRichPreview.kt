@@ -70,13 +70,15 @@ private fun InChatYoutubePreview(videoId: String) {
             ),
         )
     }
-    val previewSurface = glassSurface(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh)
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val previewSurface = glassSurface(GlassSurface.ACTIVITY, fallback)
+    val previewContent = glassContentColor(GlassSurface.ACTIVITY, fallback)
     Card(
         shape = RoundedCornerShape(22.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, previewSurface.border),
         colors = androidx.compose.material3.CardDefaults.cardColors(
             containerColor = previewSurface.container,
-            contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentColor = previewContent,
         ),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -97,7 +99,7 @@ private fun InChatYoutubePreview(videoId: String) {
                 Text(
                     text = "YouTube · playing in Nastech",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = previewContent.copy(alpha = 0.76f),
                 )
             }
         }
@@ -106,13 +108,15 @@ private fun InChatYoutubePreview(videoId: String) {
 
 @Composable
 private fun InChatImagePreview(url: String) {
-    val previewSurface = glassSurface(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh)
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val previewSurface = glassSurface(GlassSurface.ACTIVITY, fallback)
+    val previewContent = glassContentColor(GlassSurface.ACTIVITY, fallback)
     Card(
         shape = RoundedCornerShape(22.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, previewSurface.border),
         colors = androidx.compose.material3.CardDefaults.cardColors(
             containerColor = previewSurface.container,
-            contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentColor = previewContent,
         ),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -133,14 +137,16 @@ private fun InChatLinkPreview(url: String, onClick: () -> Unit) {
     val parsed = remember(url) { url.toHttpUrlOrNull() }
     val host = parsed?.host?.removePrefix("www.") ?: "Linked content"
     val path = parsed?.encodedPath?.takeIf { it.isNotBlank() && it != "/" } ?: "Open securely inside Nastech"
-    val previewSurface = glassSurface(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh)
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val previewSurface = glassSurface(GlassSurface.ACTIVITY, fallback)
+    val previewContent = glassContentColor(GlassSurface.ACTIVITY, fallback)
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(22.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, previewSurface.border),
         colors = androidx.compose.material3.CardDefaults.cardColors(
             containerColor = previewSurface.container,
-            contentColor = glassContentColor(GlassSurface.ACTIVITY, MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentColor = previewContent,
         ),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -156,14 +162,14 @@ private fun InChatLinkPreview(url: String, onClick: () -> Unit) {
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = previewContent,
                 )
                 Text(
                     text = path,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = previewContent.copy(alpha = 0.76f),
                 )
             }
         }

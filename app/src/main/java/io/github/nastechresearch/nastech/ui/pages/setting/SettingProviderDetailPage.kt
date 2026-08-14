@@ -102,6 +102,7 @@ import me.rerere.ai.provider.TextGenerationParams
 import me.rerere.ai.registry.ModelRegistry
 import me.rerere.ai.ui.UIMessage
 import io.github.nastechresearch.nastech.R
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.ui.components.ai.ModelAbilityTag
 import io.github.nastechresearch.nastech.ui.components.ai.ModelModalityTag
 import io.github.nastechresearch.nastech.ui.components.ai.ModelSelector
@@ -128,6 +129,8 @@ import io.github.nastechresearch.nastech.ui.pages.setting.components.SettingProv
 import io.github.nastechresearch.nastech.ui.pages.setting.components.isUsingDefaultBaseUrl
 import io.github.nastechresearch.nastech.ui.pages.setting.components.resetBaseUrlToDefault
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.ui.theme.extendColors
 import io.github.nastechresearch.nastech.utils.UiState
 import io.github.nastechresearch.nastech.utils.plus
@@ -146,6 +149,9 @@ fun SettingProviderDetailPage(id: Uuid, vm: SettingVM = koinViewModel()) {
     val scope = rememberCoroutineScope()
     val toaster = LocalToaster.current
     val context = LocalContext.current
+    val detailFallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val detailSurface = glassSurface(GlassSurface.SETTINGS, detailFallback)
+    val detailContent = glassContentColor(GlassSurface.SETTINGS, detailFallback)
 
     val onEdit = { newProvider: ProviderSetting ->
         val newSettings = settings.copy(
@@ -168,7 +174,7 @@ fun SettingProviderDetailPage(id: Uuid, vm: SettingVM = koinViewModel()) {
     }
 
     Scaffold(
-        containerColor = CustomColors.topBarColors.containerColor,
+        containerColor = detailSurface.container,
         topBar = {
             TopAppBar(
                 navigationIcon = {
@@ -181,7 +187,7 @@ fun SettingProviderDetailPage(id: Uuid, vm: SettingVM = koinViewModel()) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         AutoAIIcon(provider.name, modifier = Modifier.size(22.dp))
-                        Text(text = provider.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(text = provider.name, maxLines = 1, overflow = TextOverflow.Ellipsis, color = detailContent)
                     }
                 },
                 actions = {
@@ -205,7 +211,8 @@ fun SettingProviderDetailPage(id: Uuid, vm: SettingVM = koinViewModel()) {
         },
         bottomBar = {
             NavigationBar(
-                containerColor = CustomColors.cardColorsOnSurfaceContainer.containerColor
+                containerColor = detailSurface.container,
+                contentColor = detailContent,
             ) {
                 NavigationBarItem(
                     selected = pager.currentPage == 0,

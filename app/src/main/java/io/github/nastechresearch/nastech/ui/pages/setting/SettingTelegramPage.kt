@@ -1,6 +1,7 @@
 package io.github.nastechresearch.nastech.ui.pages.setting
 
 import android.content.Context
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -48,6 +49,7 @@ import io.github.nastechresearch.nastech.service.TelegramBotService
 import io.github.nastechresearch.nastech.ui.components.nav.BackButton
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
 import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import kotlinx.coroutines.launch
 import me.rerere.hugeicons.HugeIcons
@@ -68,6 +70,7 @@ fun SettingTelegramPage() {
     val toaster = LocalToaster.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val settingsGlass = glassSurface(GlassSurface.SETTINGS, MaterialTheme.colorScheme.surfaceContainerHigh)
+    val settingsContent = glassContentColor(GlassSurface.SETTINGS, MaterialTheme.colorScheme.surfaceContainerHigh)
     var editor by remember { mutableStateOf<TelegramEditor?>(null) }
 
     fun setRunning(running: Boolean) = scope.launch {
@@ -86,14 +89,14 @@ fun SettingTelegramPage() {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 14.dp),
         ) {
-            item { TelegramStatusCard(config.enabled, TelegramBotService.isRunning, settingsGlass.container, settingsGlass.border) { setRunning(!config.enabled) } }
+            item { TelegramStatusCard(config.enabled, TelegramBotService.isRunning, settingsGlass.container, settingsGlass.border, settingsContent) { setRunning(!config.enabled) } }
             items(listOf(
                 TelegramTile("Bot Token", if (config.token.isBlank()) "Not configured" else "Configured", TelegramEditor.TOKEN),
                 TelegramTile("Telegram ID", config.defaultChatId?.toString() ?: "Not configured", TelegramEditor.CHAT_ID),
                 TelegramTile("Allowed IDs", if (config.whitelist.isEmpty()) "No access IDs" else "${config.whitelist.size} allowed", TelegramEditor.ALLOWED_IDS),
                 TelegramTile("Proxy", if (config.proxyEnabled) "${config.proxyType} enabled" else "Disabled", TelegramEditor.PROXY),
                 TelegramTile("Service", if (config.enabled) "Running on boot" else "Stopped", TelegramEditor.SERVICE),
-            )) { tile -> TelegramGridTile(tile, settingsGlass.container, settingsGlass.border) { editor = tile.editor } }
+            )) { tile -> TelegramGridTile(tile, settingsGlass.container, settingsGlass.border, settingsContent) { editor = tile.editor } }
         }
     }
 
@@ -104,21 +107,51 @@ fun SettingTelegramPage() {
 
 private data class TelegramTile(val title: String, val summary: String, val editor: TelegramEditor)
 
-@Composable private fun TelegramGridTile(tile: TelegramTile, container: androidx.compose.ui.graphics.Color, border: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
-    Card(onClick = onClick, shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = container), border = androidx.compose.foundation.BorderStroke(1.dp, border), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(tile.title, style = MaterialTheme.typography.titleMedium); Text(tile.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+@Composable private fun TelegramGridTile(tile: TelegramTile, container: androidx.compose.ui.graphics.Color, border: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
+        border = androidx.compose.foundation.BorderStroke(1.dp, border),
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(tile.title, style = MaterialTheme.typography.titleMedium, color = content)
+            Text(tile.summary, style = MaterialTheme.typography.bodySmall, color = content.copy(alpha = 0.76f))
+        }
     }
 }
 
-@Composable private fun TelegramStatusCard(enabled: Boolean, running: Boolean, container: androidx.compose.ui.graphics.Color, border: androidx.compose.ui.graphics.Color, onToggle: () -> Unit) {
-    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = container), border = androidx.compose.foundation.BorderStroke(1.dp, border), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { Text("Telegram bot", style = MaterialTheme.typography.titleLarge); Text(if (enabled && running) "Running" else if (enabled) "Starting" else "Stopped", color = MaterialTheme.colorScheme.primary); Button(onClick = onToggle, modifier = Modifier.fillMaxWidth()) { Icon(if (enabled) HugeIcons.Stop else HugeIcons.Play, null); Text(if (enabled) " Stop" else " Start") } }
+@Composable private fun TelegramStatusCard(enabled: Boolean, running: Boolean, container: androidx.compose.ui.graphics.Color, border: androidx.compose.ui.graphics.Color, content: androidx.compose.ui.graphics.Color, onToggle: () -> Unit) {
+    Card(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
+        border = androidx.compose.foundation.BorderStroke(1.dp, border),
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Telegram bot", style = MaterialTheme.typography.titleLarge, color = content)
+            Text(if (enabled && running) "Running" else if (enabled) "Starting" else "Stopped", color = MaterialTheme.colorScheme.primary)
+            Button(onClick = onToggle, modifier = Modifier.fillMaxWidth()) {
+                Icon(if (enabled) HugeIcons.Stop else HugeIcons.Play, null)
+                Text(if (enabled) " Stop" else " Start")
+            }
+        }
     }
 }
 
 @Composable private fun TelegramEditorSheet(editor: TelegramEditor, config: TelegramBotConfig, onDismiss: () -> Unit, onSave: (TelegramBotConfig.() -> TelegramBotConfig) -> Unit) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp)) {
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surface = glassSurface(GlassSurface.BOTTOM_SHEET, fallback)
+    val content = glassContentColor(GlassSurface.BOTTOM_SHEET, fallback)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheet,
+        shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+        containerColor = surface.container,
+        contentColor = content,
+    ) {
         when (editor) {
             TelegramEditor.TOKEN -> TelegramTextEditor("Bot Token", config.token, true, "Paste the token from BotFather. Stop the bot before editing.", enabled = !config.enabled) { value -> onSave { copy(token = value.trim()) } }
             TelegramEditor.CHAT_ID -> TelegramTextEditor("Telegram ID", config.defaultChatId?.toString().orEmpty(), false, "Numeric default chat ID for bot replies.", KeyboardType.Number, enabled = !config.enabled) { value -> onSave { copy(defaultChatId = value.toLongOrNull()) } }
@@ -131,7 +164,13 @@ private data class TelegramTile(val title: String, val summary: String, val edit
 
 @Composable private fun TelegramTextEditor(title: String, initial: String, secret: Boolean, note: String, keyboard: KeyboardType = KeyboardType.Text, enabled: Boolean = true, onSave: (String) -> Unit) {
     var value by remember(initial) { mutableStateOf(initial) }; var visible by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { Text(title, style = MaterialTheme.typography.headlineSmall); Text(note, color = MaterialTheme.colorScheme.onSurfaceVariant); OutlinedTextField(value = value, onValueChange = { value = it }, enabled = enabled, modifier = Modifier.fillMaxWidth(), singleLine = !title.contains("Allowed"), keyboardOptions = KeyboardOptions(keyboardType = keyboard), visualTransformation = if (secret && !visible) PasswordVisualTransformation() else VisualTransformation.None, trailingIcon = if (secret) {{ IconButton(onClick = { visible = !visible }) { Icon(if (visible) HugeIcons.ViewOff else HugeIcons.View, null) } }} else null); if (enabled) Button(onClick = { onSave(value) }, modifier = Modifier.fillMaxWidth()) { Text("Save") } }
+    val content = glassContentColor(GlassSurface.BOTTOM_SHEET, MaterialTheme.colorScheme.surfaceContainerHigh)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = content)
+        Text(note, color = content.copy(alpha = 0.76f))
+        OutlinedTextField(value = value, onValueChange = { value = it }, enabled = enabled, modifier = Modifier.fillMaxWidth(), singleLine = !title.contains("Allowed"), keyboardOptions = KeyboardOptions(keyboardType = keyboard), visualTransformation = if (secret && !visible) PasswordVisualTransformation() else VisualTransformation.None, trailingIcon = if (secret) {{ IconButton(onClick = { visible = !visible }) { Icon(if (visible) HugeIcons.ViewOff else HugeIcons.View, null, tint = content) } }} else null)
+        if (enabled) Button(onClick = { onSave(value) }, modifier = Modifier.fillMaxWidth()) { Text("Save") }
+    }
 }
 
 @Composable private fun TelegramProxyEditor(config: TelegramBotConfig, canEdit: Boolean, onSave: (TelegramBotConfig.() -> TelegramBotConfig) -> Unit) {

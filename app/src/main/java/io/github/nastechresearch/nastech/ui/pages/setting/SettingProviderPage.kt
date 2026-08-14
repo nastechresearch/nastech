@@ -13,6 +13,7 @@ import me.rerere.hugeicons.stroke.Sparkles
 import me.rerere.hugeicons.stroke.Cancel01
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +79,7 @@ import io.github.g00fy2.quickie.ScanQRCode
 import me.rerere.ai.provider.ProviderSetting
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.Screen
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.datastore.RECOMMENDED_PROVIDERS
 import io.github.nastechresearch.nastech.ui.components.nav.BackButton
 import io.github.nastechresearch.nastech.ui.components.ui.AutoAIIcon
@@ -89,6 +91,8 @@ import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.hooks.useEditState
 import io.github.nastechresearch.nastech.ui.pages.setting.components.ProviderConfigure
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.ImageUtils
 import io.github.nastechresearch.nastech.utils.plus
 import org.koin.androidx.compose.koinViewModel
@@ -238,19 +242,27 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
 
 @Composable
 private fun ProviderGridTile(provider: ProviderSetting, onClick: () -> Unit) {
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surface = glassSurface(GlassSurface.SETTINGS, fallback)
+    val content = glassContentColor(GlassSurface.SETTINGS, fallback)
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CustomColors.listItemColors.containerColor),
-        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = surface.container, contentColor = content),
+        border = androidx.compose.foundation.BorderStroke(1.dp, surface.border),
+        modifier = Modifier.fillMaxWidth().animateContentSize(),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            AutoAIIcon(name = provider.name, modifier = Modifier.size(38.dp))
-            Text(provider.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(if (provider.enabled) "Configured" else "Disabled", style = MaterialTheme.typography.labelMedium, color = if (provider.enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            AutoAIIcon(name = provider.name, modifier = Modifier.size(40.dp))
+            Text(provider.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = content)
+            Text(
+                if (provider.enabled) "Configured" else "Disabled",
+                style = MaterialTheme.typography.labelMedium,
+                color = if (provider.enabled) MaterialTheme.colorScheme.primary else content.copy(alpha = 0.76f),
+            )
         }
     }
 }

@@ -3,6 +3,7 @@ package io.github.nastechresearch.nastech.ui.pages.setting
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -514,6 +515,38 @@ private fun SettingsControlCenter(navController: Navigator) {
                 modifier = Modifier.weight(1f),
             )
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            SettingsQuickTile(
+                title = "Skills",
+                subtitle = "Install and refresh",
+                icon = HugeIcons.Package,
+                onClick = { navController.navigate(Screen.Extensions) },
+                modifier = Modifier.weight(1f),
+            )
+            SettingsQuickTile(
+                title = "MCP",
+                subtitle = "Servers and tools",
+                icon = HugeIcons.McpServer,
+                onClick = { navController.navigate(Screen.SettingMcp) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            SettingsQuickTile(
+                title = "Telegram",
+                subtitle = "Bot and access",
+                icon = HugeIcons.Telegram,
+                onClick = { navController.navigate(Screen.SettingTelegram) },
+                modifier = Modifier.weight(1f),
+            )
+            SettingsQuickTile(
+                title = "Automation",
+                subtitle = "Tasks and schedules",
+                icon = HugeIcons.Connect,
+                onClick = { navController.navigate(Screen.SettingWorkflows) },
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -525,15 +558,17 @@ private fun SettingsQuickTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tileSurface = glassSurface(GlassSurface.SETTINGS, MaterialTheme.colorScheme.surfaceContainerHigh)
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val tileSurface = glassSurface(GlassSurface.SETTINGS, fallback)
+    val content = glassContentColor(GlassSurface.SETTINGS, fallback)
     Card(
-        modifier = modifier,
+        modifier = modifier.animateContentSize(),
         onClick = onClick,
         shape = RoundedCornerShape(22.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, tileSurface.border),
         colors = CardDefaults.cardColors(
             containerColor = tileSurface.container,
-            contentColor = glassContentColor(GlassSurface.SETTINGS, MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentColor = content,
         ),
     ) {
         Column(
@@ -541,8 +576,8 @@ private fun SettingsQuickTile(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = MaterialTheme.typography.titleSmall, color = content)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = content.copy(alpha = 0.76f))
         }
     }
 }

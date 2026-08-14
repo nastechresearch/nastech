@@ -97,6 +97,7 @@ import me.rerere.hugeicons.stroke.View
 import me.rerere.hugeicons.stroke.ViewOff
 import me.rerere.hugeicons.stroke.Settings03
 import io.github.nastechresearch.nastech.R
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.ai.mcp.McpCommonOptions
 import io.github.nastechresearch.nastech.data.ai.mcp.McpManager
 import io.github.nastechresearch.nastech.data.ai.mcp.McpServerConfig
@@ -112,6 +113,8 @@ import io.github.nastechresearch.nastech.ui.hooks.EditState
 import io.github.nastechresearch.nastech.ui.hooks.EditStateContent
 import io.github.nastechresearch.nastech.ui.hooks.useEditState
 import io.github.nastechresearch.nastech.ui.theme.CustomColors
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.ui.theme.extendColors
 import io.github.nastechresearch.nastech.utils.writeClipboardText
 import org.koin.androidx.compose.koinViewModel
@@ -261,6 +264,9 @@ private fun McpServerItem(
     val dismissBoxState = rememberSwipeToDismissBoxState()
     val scope = rememberCoroutineScope()
     var errorDetail by remember { mutableStateOf<McpStatus.Error?>(null) }
+    val fallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surface = glassSurface(GlassSurface.SETTINGS, fallback)
+    val content = glassContentColor(GlassSurface.SETTINGS, fallback)
 
     errorDetail?.let { error ->
         val context = LocalContext.current
@@ -325,8 +331,11 @@ private fun McpServerItem(
         modifier = modifier
     ) {
         Card(
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, surface.border),
             colors = CardDefaults.cardColors(
-                containerColor = CustomColors.listItemColors.containerColor
+                containerColor = surface.container,
+                contentColor = content,
             )
         ) {
             Row(
