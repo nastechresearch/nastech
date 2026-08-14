@@ -169,12 +169,28 @@ sealed class ASRProviderSetting {
         }
     }
 
+    @Serializable
+    @SerialName("local-device")
+    data class LocalDevice(
+        override val id: Uuid = Uuid.random(),
+        override val name: String = "Local Speech Recognition",
+        val modelId: String = LocalAsrModelPackage.ENGLISH_STREAMING_INT8.id,
+        val provider: String = "cpu",
+        val sampleRate: Int = 16_000,
+    ) : ASRProviderSetting() {
+        override fun copyProvider(
+            id: Uuid,
+            name: String,
+        ): ASRProviderSetting = copy(id = id, name = name)
+    }
+
     companion object {
         val Types by lazy {
             listOf(
                 OpenAIRealtime::class,
                 DashScope::class,
                 Volcengine::class,
+                LocalDevice::class,
                 MiMo::class,
                 Step::class,
             )

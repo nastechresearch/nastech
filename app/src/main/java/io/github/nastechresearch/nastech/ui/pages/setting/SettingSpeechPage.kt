@@ -692,6 +692,14 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
                 }
             )
             DropdownMenuItem(
+                text = { Text("Local Speech Recognition") },
+                onClick = {
+                    currentProvider = ASRProviderSetting.LocalDevice()
+                    showTypeMenu = false
+                    showBottomSheet = true
+                }
+            )
+            DropdownMenuItem(
                 text = { Text("MiMo") },
                 onClick = {
                     currentProvider = ASRProviderSetting.MiMo()
@@ -974,6 +982,7 @@ private fun ASRProviderItem(
                             is ASRProviderSetting.OpenAIRealtime -> "OpenAI Realtime"
                             is ASRProviderSetting.DashScope -> "DashScope"
                             is ASRProviderSetting.Volcengine -> "Volcengine"
+                            is ASRProviderSetting.LocalDevice -> "Local Speech Recognition"
                             is ASRProviderSetting.MiMo -> "MiMo"
                             is ASRProviderSetting.Step -> "Step"
                         },

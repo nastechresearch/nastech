@@ -229,6 +229,10 @@ val appModule = module {
     }
 
     single {
+        me.rerere.asr.LocalAsrPackageManager(get())
+    }
+
+    single {
         TTSManager(get(), get())
     }
 

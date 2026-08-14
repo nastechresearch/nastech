@@ -15,7 +15,9 @@ import kotlinx.coroutines.flow.StateFlow
 import me.rerere.asr.ASRController
 import me.rerere.asr.ASRProviderSetting
 import me.rerere.asr.ASRState
+import me.rerere.asr.LocalAsrPackageManager
 import me.rerere.asr.providers.DashScopeASRController
+import me.rerere.asr.providers.LocalDeviceASRController
 import me.rerere.asr.providers.MiMoASRController
 import me.rerere.asr.providers.OpenAIRealtimeASRController
 import me.rerere.asr.providers.StepASRController
@@ -30,10 +32,11 @@ fun rememberCustomAsrState(): CustomAsrState {
     val context = LocalContext.current
     val settingsStore = koinInject<SettingsStore>()
     val httpClient = koinInject<OkHttpClient>()
+    val localAsrPackageManager = koinInject<LocalAsrPackageManager>()
     val settings by settingsStore.settingsFlow.collectAsStateWithLifecycle()
 
     val asrState = remember {
-        CustomAsrStateImpl(context.applicationContext, httpClient)
+        CustomAsrStateImpl(context.applicationContext, httpClient, localAsrPackageManager)
     }
 
     DisposableEffect(settings.selectedASRProviderId, settings.asrProviders) {
@@ -59,7 +62,8 @@ interface CustomAsrState {
 
 private class CustomAsrStateImpl(
     private val context: Context,
-    private val httpClient: OkHttpClient
+    private val httpClient: OkHttpClient,
+    private val localAsrPackageManager: LocalAsrPackageManager,
 ) : CustomAsrState {
     private var controller: ASRController? = null
     private val idleState = MutableStateFlow(ASRState())
@@ -124,6 +128,10 @@ private class CustomAsrStateImpl(
             is ASRProviderSetting.MiMo -> {
                 if (provider.apiKey.isBlank()) return null
                 MiMoASRController(context, httpClient, provider)
+            }
+
+            is ASRProviderSetting.LocalDevice -> {
+                LocalDeviceASRController(context, localAsrPackageManager, provider)
             }
 
             is ASRProviderSetting.Step -> {

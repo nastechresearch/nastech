@@ -11,6 +11,8 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import me.rerere.tts.kokoro.KokoroModelPackage
 import me.rerere.tts.kokoro.KokoroPackageManager
 import me.rerere.tts.kokoro.KokoroPackageVariant
@@ -30,6 +32,8 @@ import me.rerere.tts.provider.TTSProviderSetting
 class KokoroLocalTTSProvider(
     private val packageManager: KokoroPackageManager,
 ) : TTSProvider<TTSProviderSetting.LocalVoiceLibrary> {
+    private val runtimeMutex = Mutex()
+    private var retainedRuntime: RetainedRuntime? = null
     override fun generateSpeech(
         context: Context,
         providerSetting: TTSProviderSetting.LocalVoiceLibrary,
@@ -39,37 +43,76 @@ class KokoroLocalTTSProvider(
         val modelDirectory = packageManager.readyDirectory(modelPackage)
             ?: error("Download and verify the selected local voice package before using this provider")
         val requestedProvider = providerSetting.provider.normalizedProvider()
-        val runtime = createRuntime(context, modelDirectory, modelPackage, requestedProvider)
-        try {
-            val audio = runtime.tts.generate(
-                request.text,
-                KokoroModelPackage.speakerId(providerSetting.voiceId),
-                providerSetting.speechRate.coerceIn(MIN_SPEECH_RATE, MAX_SPEECH_RATE),
+        val (runtime, audio) = runtimeMutex.withLock {
+            val activeRuntime = obtainRuntime(
+                context = context,
+                modelDirectory = modelDirectory,
+                modelPackage = modelPackage,
+                requestedProvider = requestedProvider,
             )
-            val samples = audio.samples
-            if (samples.isEmpty()) error("Kokoro returned no audio for this text")
-            emit(
-                AudioChunk(
-                    data = pcmFloatsToWav(samples, audio.sampleRate),
-                    format = AudioFormat.WAV,
-                    sampleRate = audio.sampleRate,
-                    isLast = true,
-                    metadata = mapOf(
-                        "provider" to "kokoro-local",
-                        "requestedProvider" to requestedProvider,
-                        "activeProvider" to runtime.activeProvider,
-                        "acceleratorFallback" to runtime.didFallback.toString(),
-                        "voiceId" to KokoroModelPackage.voiceFor(providerSetting.voiceId).id,
-                        "speakerId" to KokoroModelPackage.speakerId(providerSetting.voiceId).toString(),
-                        "packageId" to modelPackage.id,
-                        "modelVersion" to KokoroModelPackage.VERSION,
-                        "onDevice" to "true",
-                    ),
-                ),
-            )
-        } finally {
-            runtime.tts.release()
+            try {
+                activeRuntime to activeRuntime.tts.generate(
+                    request.text,
+                    KokoroModelPackage.speakerId(providerSetting.voiceId),
+                    providerSetting.speechRate.coerceIn(MIN_SPEECH_RATE, MAX_SPEECH_RATE),
+                )
+            } catch (error: Throwable) {
+                releaseRetainedRuntime()
+                throw error
+            }
         }
+        val samples = audio.samples
+        if (samples.isEmpty()) error("Kokoro returned no audio for this text")
+        emit(
+            AudioChunk(
+                data = pcmFloatsToWav(samples, audio.sampleRate),
+                format = AudioFormat.WAV,
+                sampleRate = audio.sampleRate,
+                isLast = true,
+                metadata = mapOf(
+                    "provider" to "kokoro-local",
+                    "requestedProvider" to requestedProvider,
+                    "activeProvider" to runtime.activeProvider,
+                    "acceleratorFallback" to runtime.didFallback.toString(),
+                    "voiceId" to KokoroModelPackage.voiceFor(providerSetting.voiceId).id,
+                    "speakerId" to KokoroModelPackage.speakerId(providerSetting.voiceId).toString(),
+                    "packageId" to modelPackage.id,
+                    "modelVersion" to KokoroModelPackage.VERSION,
+                    "onDevice" to "true",
+                ),
+            ),
+        )
+    }
+
+    private fun obtainRuntime(
+        context: Context,
+        modelDirectory: File,
+        modelPackage: KokoroPackageVariant,
+        requestedProvider: String,
+    ): RuntimeSelection {
+        val current = retainedRuntime
+        if (
+            current != null &&
+            current.modelDirectory == modelDirectory.absolutePath &&
+            current.packageId == modelPackage.id &&
+            current.requestedProvider == requestedProvider
+        ) {
+            return current.selection
+        }
+        releaseRetainedRuntime()
+        return createRuntime(context, modelDirectory, modelPackage, requestedProvider).also { selection ->
+            retainedRuntime = RetainedRuntime(
+                modelDirectory = modelDirectory.absolutePath,
+                packageId = modelPackage.id,
+                requestedProvider = requestedProvider,
+                selection = selection,
+            )
+        }
+    }
+
+    private fun releaseRetainedRuntime() {
+        retainedRuntime?.selection?.tts?.release()
+        retainedRuntime = null
     }
 
     private fun createRuntime(
@@ -155,6 +198,13 @@ class KokoroLocalTTSProvider(
         val tts: OfflineTts,
         val activeProvider: String,
         val didFallback: Boolean,
+    )
+
+    private data class RetainedRuntime(
+        val modelDirectory: String,
+        val packageId: String,
+        val requestedProvider: String,
+        val selection: RuntimeSelection,
     )
 
     private fun String.normalizedProvider(): String = when (lowercase()) {

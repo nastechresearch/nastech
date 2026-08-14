@@ -73,7 +73,7 @@ class TtsController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     // 组件
-    private val chunker = TextChunker(maxChunkLength = 160)
+    private val chunker = TextChunker()
     private val synthesizer = TtsSynthesizer(ttsManager)
     private val audio = AudioPlayer(context)
 
@@ -89,8 +89,10 @@ class TtsController(
     private var lastPrefetchedIndex: Int = -1
 
     // 行为参数
-    private val chunkDelayMs = 120L
-    private val prefetchCount = 4
+    // The adaptive chunker keeps the first batch small; prefetch only the next two batches to
+    // reduce local-model contention and begin audible speech as soon as the first batch is ready.
+    private val chunkDelayMs = 0L
+    private val prefetchCount = 2
 
     // 状态流（保留与旧版兼容的 StateFlow）
     private val _isAvailable = MutableStateFlow(false)
@@ -315,7 +317,7 @@ class TtsController(
                         cache.remove(chunk.id)
                     }
 
-                    if (queue.isNotEmpty()) delay(chunkDelayMs)
+                    if (chunkDelayMs > 0L && queue.isNotEmpty()) delay(chunkDelayMs)
 
                     processedCount++
                 }
