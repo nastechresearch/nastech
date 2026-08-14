@@ -2,6 +2,12 @@ package io.github.nastechresearch.nastech.ui.components.ai
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -63,6 +69,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -96,6 +103,7 @@ import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.FullScreen
 import me.rerere.hugeicons.stroke.Tick01
 import me.rerere.hugeicons.stroke.Zap
+import me.rerere.hugeicons.stroke.Voice
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.datastore.Settings
@@ -175,6 +183,7 @@ fun ChatInput(
 
     val asr = LocalASRState.current
     val asrState by asr.state.collectAsState()
+    val isLiveVoiceCall = asr.isLiveConversation
     val hapticFeedback = LocalHapticFeedback.current
     val soundEffectPlayer: SoundEffectPlayer = koinInject()
     LaunchedEffect(Unit) {
@@ -183,6 +192,26 @@ fun ChatInput(
     val asrPermission = rememberPermissionState(PermissionRecordAudio)
     PermissionManager(permissionState = asrPermission)
     var asrBaseText by remember { mutableStateOf("") }
+    fun toggleVoiceSession() {
+        when (asrState.status) {
+            ASRStatus.Listening -> asr.stop()
+            ASRStatus.Idle, ASRStatus.Error -> {
+                if (!asrPermission.allRequiredPermissionsGranted) {
+                    asrPermission.requestPermissions()
+                } else {
+                    asrBaseText = state.textContent.text.toString()
+                    asr.start { transcript ->
+                        if (!asr.isLiveConversation) {
+                            val spacer = if (asrBaseText.isBlank() || transcript.isBlank()) "" else " "
+                            state.setMessageText(asrBaseText + spacer + transcript)
+                        }
+                    }
+                }
+            }
+
+            ASRStatus.Connecting, ASRStatus.Stopping -> Unit
+        }
+    }
     LaunchedEffect(asrState.status) {
         when (asrState.status) {
             ASRStatus.Listening -> {
@@ -243,6 +272,50 @@ fun ChatInput(
                 ) {
                     if (state.messageContent.isNotEmpty()) {
                         MediaFileInputRow(state = state)
+                    }
+
+                    AnimatedVisibility(
+                        visible = isLiveVoiceCall && asrState.isRecording,
+                        enter = fadeIn() + scaleIn(),
+                        exit = fadeOut() + scaleOut(),
+                    ) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (asrState.isAgentSpeaking) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            },
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                                Text(
+                                    text = if (asrState.isAgentSpeaking) "ElevenLabs agent speaking" else "ElevenLabs live call",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = if (asrState.isAgentSpeaking) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    },
+                                )
+                                val liveTranscript = when {
+                                    asrState.agentResponse.isNotBlank() -> asrState.agentResponse
+                                    asrState.transcript.isNotBlank() -> asrState.transcript
+                                    else -> "Speak naturally. You can interrupt the agent at any time."
+                                }
+                                Text(
+                                    text = liveTranscript,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = if (asrState.isAgentSpeaking) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    },
+                                )
+                            }
+                        }
                     }
 
                     TextInputRow(
@@ -320,82 +393,115 @@ fun ChatInput(
 
                         }
 
-                        if (asrState.isAvailable || asrState.isRecording) {
-                            AsrButton(
-                                state = asrState,
-                                onClick = {
-                                    when (asrState.status) {
-                                        ASRStatus.Listening -> asr.stop()
-                                        ASRStatus.Idle, ASRStatus.Error -> {
-                                            if (!asrPermission.allRequiredPermissionsGranted) {
-                                                asrPermission.requestPermissions()
-                                            } else {
-                                                asrBaseText = state.textContent.text.toString()
-                                                asr.start { transcript ->
-                                                    val spacer =
-                                                        if (asrBaseText.isBlank() || transcript.isBlank()) "" else " "
-                                                    state.setMessageText(asrBaseText + spacer + transcript)
-                                                }
-                                            }
-                                        }
-
-                                        ASRStatus.Connecting, ASRStatus.Stopping -> {}
-                                    }
-                                }
-                            )
+                        val hasDraft = !state.isEmpty()
+                        val voiceReady = (asrState.isAvailable || asrState.isRecording) && !hasDraft
+                        val isVoiceActive = asrState.isRecording
+                        val primaryEnabled = loading || isVoiceActive || hasDraft || voiceReady
+                        val primaryContainerColor = when {
+                            loading -> MaterialTheme.colorScheme.errorContainer
+                            isVoiceActive -> MaterialTheme.colorScheme.secondaryContainer
+                            hasDraft -> MaterialTheme.colorScheme.primary
+                            voiceReady -> MaterialTheme.colorScheme.primaryContainer
+                            else -> MaterialTheme.colorScheme.surfaceContainerHigh
                         }
-
-                        AnimatedVisibility(
-                            visible = !asrState.isRecording,
-                            enter = fadeIn() + scaleIn(),
-                            exit = fadeOut() + scaleOut(),
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .testTag("chat_send_button")
-                                    .clip(CircleShape)
-                                    .combinedClickable(
-                                        enabled = loading || !state.isEmpty(),
-                                        onClick = {
-                                            sendMessage()
-                                        }, onLongClick = {
-                                            sendMessageWithoutAnswer()
+                        val primaryContentColor = when {
+                            loading -> MaterialTheme.colorScheme.onErrorContainer
+                            isVoiceActive -> MaterialTheme.colorScheme.onSecondaryContainer
+                            hasDraft -> MaterialTheme.colorScheme.onPrimary
+                            voiceReady -> MaterialTheme.colorScheme.onPrimaryContainer
+                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        }
+                        val sendPulse = rememberInfiniteTransition(label = "composer_send_pulse")
+                        val sendGlowScale by sendPulse.animateFloat(
+                            initialValue = 0.84f,
+                            targetValue = 1.20f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1_200, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse,
+                            ),
+                            label = "composer_send_glow_scale",
+                        )
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .testTag("chat_primary_action_button")
+                                .clip(CircleShape)
+                                .combinedClickable(
+                                    enabled = primaryEnabled,
+                                    onClick = {
+                                        when {
+                                            loading -> sendMessage()
+                                            isVoiceActive -> toggleVoiceSession()
+                                            hasDraft -> sendMessage()
+                                            voiceReady -> toggleVoiceSession()
                                         }
+                                    },
+                                    onLongClick = {
+                                        if (hasDraft && !loading && !isVoiceActive) sendMessageWithoutAnswer()
+                                    },
+                                ),
+                        ) {
+                            if ((hasDraft && !loading) || isVoiceActive) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .scale(sendGlowScale)
+                                        .clip(CircleShape),
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.fillMaxSize(),
+                                        shape = CircleShape,
+                                        color = if (isVoiceActive) {
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.26f)
+                                        } else {
+                                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.24f)
+                                        },
+                                        content = {},
                                     )
-                            ) {
-                                val containerColor = when {
-                                    loading -> MaterialTheme.colorScheme.errorContainer
-                                    state.isEmpty() -> MaterialTheme.colorScheme.surfaceContainerHigh
-                                    else -> MaterialTheme.colorScheme.primary
                                 }
-                                val contentColor = when {
-                                    loading -> MaterialTheme.colorScheme.onErrorContainer
-                                    state.isEmpty() -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                    else -> MaterialTheme.colorScheme.onPrimary
-                                }
-                                Surface(
-                                    modifier = Modifier.fillMaxSize(),
-                                    shape = CircleShape,
-                                    color = containerColor,
-                                    content = {})
-                                if (loading) {
+                            }
+                            Surface(
+                                modifier = Modifier.size(42.dp),
+                                shape = CircleShape,
+                                color = primaryContainerColor,
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (inputGlass.enabled) inputGlass.border else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                                ),
+                                content = {},
+                            )
+                            when {
+                                loading -> {
                                     KeepScreenOn()
                                     Icon(
                                         imageVector = HugeIcons.Cancel01,
                                         contentDescription = stringResource(R.string.stop),
-                                        tint = contentColor,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = HugeIcons.ArrowUp02,
-                                        contentDescription = stringResource(R.string.send),
-                                        tint = contentColor,
-                                        modifier = Modifier.size(20.dp)
+                                        tint = primaryContentColor,
+                                        modifier = Modifier.size(20.dp),
                                     )
                                 }
+
+                                isVoiceActive -> Icon(
+                                    imageVector = HugeIcons.Voice,
+                                    contentDescription = "End Nastech Voice call",
+                                    tint = primaryContentColor,
+                                    modifier = Modifier.size(21.dp),
+                                )
+
+                                hasDraft -> Icon(
+                                    imageVector = HugeIcons.ArrowUp02,
+                                    contentDescription = stringResource(R.string.send),
+                                    tint = primaryContentColor,
+                                    modifier = Modifier.size(21.dp),
+                                )
+
+                                else -> Icon(
+                                    imageVector = HugeIcons.Voice,
+                                    contentDescription = "Start Nastech Voice call",
+                                    tint = primaryContentColor,
+                                    modifier = Modifier.size(21.dp),
+                                )
                             }
                         }
                     }

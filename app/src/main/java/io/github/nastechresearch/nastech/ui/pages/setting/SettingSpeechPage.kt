@@ -692,9 +692,9 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
                 }
             )
             DropdownMenuItem(
-                text = { Text("ElevenLabs Speech to Text") },
+                text = { Text("ElevenLabs Live Agent Call") },
                 onClick = {
-                    currentProvider = ASRProviderSetting.ElevenLabs()
+                    currentProvider = ASRProviderSetting.ElevenLabsSTS()
                     showTypeMenu = false
                     showBottomSheet = true
                 }
@@ -980,7 +980,7 @@ private fun ASRProviderItem(
                             is ASRProviderSetting.OpenAIRealtime -> "OpenAI Realtime"
                             is ASRProviderSetting.DashScope -> "DashScope"
                             is ASRProviderSetting.Volcengine -> "Volcengine"
-                            is ASRProviderSetting.ElevenLabs -> "ElevenLabs Speech to Text"
+                            is ASRProviderSetting.ElevenLabsSTS -> "ElevenLabs Live Agent Call"
                             is ASRProviderSetting.MiMo -> "MiMo"
                             is ASRProviderSetting.Step -> "Step"
                         },

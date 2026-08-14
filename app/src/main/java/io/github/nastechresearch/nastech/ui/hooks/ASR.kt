@@ -16,13 +16,14 @@ import me.rerere.asr.ASRController
 import me.rerere.asr.ASRProviderSetting
 import me.rerere.asr.ASRState
 import me.rerere.asr.providers.DashScopeASRController
-import me.rerere.asr.providers.ElevenLabsASRController
+import me.rerere.asr.providers.ElevenLabsSTSController
 import me.rerere.asr.providers.MiMoASRController
 import me.rerere.asr.providers.OpenAIRealtimeASRController
 import me.rerere.asr.providers.StepASRController
 import me.rerere.asr.providers.VolcengineASRController
 import io.github.nastechresearch.nastech.data.datastore.SettingsStore
 import io.github.nastechresearch.nastech.data.datastore.getSelectedASRProvider
+import io.github.nastechresearch.nastech.service.NastechVoiceCallService
 import okhttp3.OkHttpClient
 import org.koin.compose.koinInject
 
@@ -53,6 +54,7 @@ fun rememberCustomAsrState(): CustomAsrState {
 
 interface CustomAsrState {
     val state: StateFlow<ASRState>
+    val isLiveConversation: Boolean
     fun start(onTranscriptChange: (String) -> Unit)
     fun stop()
     fun cleanup()
@@ -78,6 +80,9 @@ private class CustomAsrStateImpl(
 
     override val state: StateFlow<ASRState>
         get() = controller?.state ?: idleState
+
+    override val isLiveConversation: Boolean
+        get() = controller?.isLiveConversation == true
 
     fun updateProvider(provider: ASRProviderSetting?) {
         controller?.dispose()
@@ -122,9 +127,15 @@ private class CustomAsrStateImpl(
                 VolcengineASRController(context, httpClient, provider)
             }
 
-            is ASRProviderSetting.ElevenLabs -> {
-                if (provider.apiKey.isBlank()) return null
-                ElevenLabsASRController(context, httpClient, provider)
+            is ASRProviderSetting.ElevenLabsSTS -> {
+                if (provider.apiKey.isBlank() || provider.agentId.isBlank()) return null
+                ElevenLabsSTSController(context, httpClient, provider) { active ->
+                    if (active) {
+                        NastechVoiceCallService.start(context)
+                    } else {
+                        NastechVoiceCallService.stop(context)
+                    }
+                }
             }
 
             is ASRProviderSetting.MiMo -> {

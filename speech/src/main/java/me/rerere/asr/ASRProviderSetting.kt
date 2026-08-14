@@ -85,17 +85,23 @@ sealed class ASRProviderSetting {
         }
     }
 
+    /**
+     * A bidirectional ElevenLabs Agents call. The configured agent owns the
+     * call's LLM, voice, tools, turn-taking, and returned audio; this is not
+     * a batch transcription provider.
+     */
     @Serializable
-    @SerialName("elevenlabs")
-    data class ElevenLabs(
+    @SerialName("elevenlabs_sts")
+    data class ElevenLabsSTS(
         override val id: Uuid = Uuid.random(),
-        override val name: String = "ElevenLabs Speech to Text",
+        override val name: String = "ElevenLabs Live Agent",
         val apiKey: String = "",
+        val agentId: String = "",
         val baseUrl: String = "https://api.elevenlabs.io",
-        val model: String = "scribe_v2",
-        val language: String = "",
         val sampleRate: Int = 16000,
-        val segmentDurationSec: Int = 30,
+        val audioChunkDurationMs: Int = 20,
+        val vadThreshold: Float = 0.5f,
+        val vadSilenceDurationMs: Int = 300,
     ) : ASRProviderSetting() {
         override fun copyProvider(
             id: Uuid,
@@ -193,7 +199,7 @@ sealed class ASRProviderSetting {
                 OpenAIRealtime::class,
                 DashScope::class,
                 Volcengine::class,
-                ElevenLabs::class,
+                ElevenLabsSTS::class,
                 MiMo::class,
                 Step::class,
             )

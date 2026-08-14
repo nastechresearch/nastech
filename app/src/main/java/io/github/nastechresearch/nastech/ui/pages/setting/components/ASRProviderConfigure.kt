@@ -36,7 +36,7 @@ fun ASRProviderConfigure(
                     is ASRProviderSetting.OpenAIRealtime -> "OpenAI Realtime"
                     is ASRProviderSetting.DashScope -> "DashScope"
                     is ASRProviderSetting.Volcengine -> "Volcengine"
-                    is ASRProviderSetting.ElevenLabs -> "ElevenLabs Speech to Text"
+                    is ASRProviderSetting.ElevenLabsSTS -> "ElevenLabs Live Agent"
                     is ASRProviderSetting.MiMo -> "MiMo"
                     is ASRProviderSetting.Step -> "Step"
                 },
@@ -62,7 +62,7 @@ fun ASRProviderConfigure(
             is ASRProviderSetting.OpenAIRealtime -> OpenAIRealtimeASRConfiguration(setting, onValueChange)
             is ASRProviderSetting.DashScope -> DashScopeASRConfiguration(setting, onValueChange)
             is ASRProviderSetting.Volcengine -> VolcengineASRConfiguration(setting, onValueChange)
-            is ASRProviderSetting.ElevenLabs -> ElevenLabsASRConfiguration(setting, onValueChange)
+            is ASRProviderSetting.ElevenLabsSTS -> ElevenLabsSTSConfiguration(setting, onValueChange)
             is ASRProviderSetting.MiMo -> MiMoASRConfiguration(setting, onValueChange)
             is ASRProviderSetting.Step -> StepASRConfiguration(setting, onValueChange)
         }
@@ -70,13 +70,13 @@ fun ASRProviderConfigure(
 }
 
 @Composable
-private fun ElevenLabsASRConfiguration(
-    setting: ASRProviderSetting.ElevenLabs,
+private fun ElevenLabsSTSConfiguration(
+    setting: ASRProviderSetting.ElevenLabsSTS,
     onValueChange: (ASRProviderSetting) -> Unit,
 ) {
     FormItem(
         label = { Text("ElevenLabs API key") },
-        description = { Text("A private ElevenLabs key used only for cloud transcription requests.") },
+        description = { Text("Used only to obtain a short-lived signed URL for this live voice call. It is never placed in the call URL.") },
     ) {
         OutlinedTextField(
             value = setting.apiKey,
@@ -87,50 +87,34 @@ private fun ElevenLabsASRConfiguration(
     }
 
     FormItem(
+        label = { Text("Conversational AI agent ID") },
+        description = { Text("Create or choose an ElevenLabs agent in its dashboard. That agent supplies this call's model, voice, tools, and turn-taking.") },
+    ) {
+        OutlinedTextField(
+            value = setting.agentId,
+            onValueChange = { onValueChange(setting.copy(agentId = it.trim())) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("agent_...") },
+        )
+    }
+
+    FormItem(
         label = { Text("Service URL") },
         description = { Text("Use the official ElevenLabs cloud API unless you have an approved compatible gateway.") },
     ) {
         OutlinedTextField(
             value = setting.baseUrl,
-            onValueChange = { onValueChange(setting.copy(baseUrl = it)) },
+            onValueChange = { onValueChange(setting.copy(baseUrl = it.trimEnd('/'))) },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("https://api.elevenlabs.io") },
         )
     }
 
     FormItem(
-        label = { Text("Scribe model") },
-        description = { Text("Choose scribe_v2 for standard cloud transcription or an ElevenLabs-supported realtime model.") },
+        label = { Text("Live call behavior") },
+        description = { Text("Nastech streams microphone audio to your agent and plays its returned voice directly. It does not use the separate ElevenLabs transcription or text-to-speech routes during this call.") },
     ) {
-        OutlinedTextField(
-            value = setting.model,
-            onValueChange = { onValueChange(setting.copy(model = it)) },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("scribe_v2") },
-        )
-    }
-
-    FormItem(
-        label = { Text("Language code") },
-        description = { Text("Optional ISO language code. Leave blank for automatic language detection.") },
-    ) {
-        OutlinedTextField(
-            value = setting.language,
-            onValueChange = { onValueChange(setting.copy(language = it)) },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("en") },
-        )
-    }
-
-    FormItem(
-        label = { Text("Cloud upload interval") },
-        description = { Text("Seconds recorded before a partial cloud transcription is requested. Set 0 to send only when you stop recording.") },
-    ) {
-        OutlinedNumberInput(
-            value = setting.segmentDurationSec,
-            onValueChange = { onValueChange(setting.copy(segmentDurationSec = it.coerceAtLeast(0))) },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Text("PCM 16 kHz · interruption enabled", modifier = Modifier.fillMaxWidth())
     }
 }
 

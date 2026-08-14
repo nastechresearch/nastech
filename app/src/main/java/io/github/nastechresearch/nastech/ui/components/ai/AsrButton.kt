@@ -55,6 +55,7 @@ private enum class AsrDisplayState {
 @Composable
 internal fun AsrButton(
     state: ASRState,
+    isLiveVoiceCall: Boolean,
     onClick: () -> Unit,
 ) {
     val isIdle = state.status == ASRStatus.Idle
@@ -159,7 +160,7 @@ internal fun AsrButton(
                             color = contentColor,
                         )
                         Text(
-                            text = stringResource(R.string.asr_button_stop),
+                            text = if (isLiveVoiceCall) "End call" else stringResource(R.string.asr_button_stop),
                             color = contentColor,
                             style = MaterialTheme.typography.labelLarge,
                             maxLines = 1

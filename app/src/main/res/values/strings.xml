@@ -432,6 +432,10 @@
   <string name="notification_channel_chat_completed">Chat Completed</string>
   <string name="notification_channel_chat_live_update">Chat Generation Progress</string>
   <string name="notification_channel_web_server">Web Server</string>
+  <string name="notification_channel_voice_call">Nastech Voice</string>
+  <string name="notification_voice_call_title">Nastech Voice</string>
+  <string name="notification_voice_call_active">Live agent call active</string>
+  <string name="notification_voice_call_end">End call</string>
   <string name="notification_live_update_chip_thinking">Thinking</string>
   <string name="notification_live_update_chip_tool">Tool</string>
   <string name="notification_live_update_chip_writing">Writing</string>

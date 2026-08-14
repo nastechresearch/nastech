@@ -12,6 +12,8 @@ data class ASRState(
     val status: ASRStatus = ASRStatus.Idle,
     val isAvailable: Boolean = false,
     val transcript: String = "",
+    val agentResponse: String = "",
+    val isAgentSpeaking: Boolean = false,
     val errorMessage: String? = null,
     val amplitudes: List<Float> = emptyList(),
 ) {

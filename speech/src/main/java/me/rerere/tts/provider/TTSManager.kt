@@ -2,6 +2,8 @@ package me.rerere.tts.provider
 
 import android.content.Context
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import me.rerere.asr.LiveVoiceCallRegistry
 import me.rerere.tts.model.AudioChunk
 import me.rerere.tts.model.TTSRequest
 import me.rerere.tts.provider.providers.ElevenLabsTTSProvider
@@ -35,6 +37,9 @@ class TTSManager(
         providerSetting: TTSProviderSetting,
         request: TTSRequest
     ): Flow<AudioChunk> {
+        if (LiveVoiceCallRegistry.isActive) {
+            return emptyFlow()
+        }
         return when (providerSetting) {
             is TTSProviderSetting.OpenAI -> openAIProvider.generateSpeech(context, providerSetting, request)
             is TTSProviderSetting.Gemini -> geminiProvider.generateSpeech(context, providerSetting, request)

@@ -16,10 +16,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import org.koin.compose.koinInject
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.ui.theme.glassContentColor
@@ -850,19 +858,91 @@ private fun ElevenLabsTTSConfiguration(
         )
     }
 
-    // Voice ID
+    val httpClient = koinInject<OkHttpClient>()
+    val voiceScope = rememberCoroutineScope()
+    var voiceOptions by remember(setting.apiKey, setting.baseUrl) {
+        mutableStateOf(emptyList<Pair<String, String>>())
+    }
+    var isLoadingVoices by remember { mutableStateOf(false) }
+    var voiceLoadError by remember { mutableStateOf<String?>(null) }
+
+    // A live account lookup avoids stale hard-coded mappings. Only the selected voice ID
+    // is persisted; the display label is freshly resolved whenever the user refreshes.
     FormItem(
         label = { Text(stringResource(R.string.setting_tts_page_voice)) },
-        description = { Text(stringResource(R.string.setting_tts_page_voice_description)) }
+        description = { Text("Refresh to load the real names and IDs available to this ElevenLabs account. A live agent call uses the voice configured on its agent instead.") },
     ) {
-        OutlinedTextField(
-            value = setting.voiceId,
-            onValueChange = { newVoiceId ->
-                onValueChange(setting.copy(voiceId = newVoiceId))
-            },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("JBFqnCBsd6RMkjVDRZzb") }
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SelectTextField(
+                value = setting.voiceId,
+                options = voiceOptions,
+                onValueChange = { newVoiceId ->
+                    onValueChange(setting.copy(voiceId = newVoiceId.trim()))
+                },
+                onOptionSelected = { (voiceId, _) ->
+                    onValueChange(setting.copy(voiceId = voiceId))
+                },
+                optionToString = { (voiceId, voiceName) -> "$voiceName ($voiceId)" },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FilledTonalButton(
+                onClick = {
+                    if (setting.apiKey.isBlank()) {
+                        voiceLoadError = "Add an ElevenLabs API key before loading voices."
+                        return@FilledTonalButton
+                    }
+                    isLoadingVoices = true
+                    voiceLoadError = null
+                    voiceScope.launch {
+                        runCatching {
+                            withContext(Dispatchers.IO) {
+                                val request = Request.Builder()
+                                    .url("${setting.baseUrl.trimEnd('/')}/v2/voices?page_size=100&sort=name&sort_direction=asc")
+                                    .addHeader("xi-api-key", setting.apiKey.trim())
+                                    .get()
+                                    .build()
+                                httpClient.newCall(request).execute().use { response ->
+                                    if (!response.isSuccessful) {
+                                        error("ElevenLabs voice list request failed with HTTP ${response.code}.")
+                                    }
+                                    val voices = JSONObject(response.body?.string().orEmpty())
+                                        .optJSONArray("voices")
+                                    buildList {
+                                        for (index in 0 until (voices?.length() ?: 0)) {
+                                            val voice = voices?.optJSONObject(index) ?: continue
+                                            val voiceId = voice.optString("voice_id").trim()
+                                            val voiceName = voice.optString("name").trim()
+                                            if (voiceId.isNotEmpty()) {
+                                                add(voiceId to voiceName.ifBlank { "Unnamed voice" })
+                                            }
+                                        }
+                                    }.distinctBy { it.first }
+                                }
+                            }
+                        }.onSuccess { voices ->
+                            voiceOptions = voices
+                            if (voices.isEmpty()) {
+                                voiceLoadError = "No ElevenLabs voices were returned for this account."
+                            }
+                        }.onFailure { error ->
+                            voiceLoadError = error.message ?: "Unable to load ElevenLabs voices."
+                        }
+                        isLoadingVoices = false
+                    }
+                },
+                enabled = !isLoadingVoices,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(if (isLoadingVoices) "Loading voice names…" else "Refresh voice names")
+            }
+            voiceLoadError?.let { error ->
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
     }
 
     // Stability

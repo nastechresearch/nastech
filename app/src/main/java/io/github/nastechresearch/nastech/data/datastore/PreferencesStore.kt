@@ -23,6 +23,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import me.rerere.ai.core.MessageRole
@@ -93,6 +94,32 @@ private fun stripRetiredProviderRecords(raw: String, retiredTypeNames: Set<Strin
         }
         JsonInstant.encodeToString(JsonArray(filtered))
     }
+}.getOrDefault(raw)
+
+/**
+ * Converts the retired ElevenLabs batch-transcription record into the live
+ * conversational-agent record before polymorphic decoding. Existing API keys,
+ * service URLs, sample rates, provider IDs, and user labels are retained;
+ * users then supply the required ElevenLabs agent ID in the STS editor.
+ */
+private fun migrateElevenLabsSttRecord(raw: String): String = runCatching {
+    val values = JsonInstant.parseToJsonElement(raw) as? JsonArray ?: return@runCatching raw
+    val migrated = values.map { item ->
+        val record = item as? JsonObject ?: return@map item
+        if (record["type"]?.jsonPrimitive?.content != "elevenlabs") {
+            item
+        } else {
+            JsonObject(
+                record.toMutableMap().apply {
+                    put("type", JsonPrimitive("elevenlabs_sts"))
+                    remove("model")
+                    remove("language")
+                    remove("segmentDurationSec")
+                },
+            )
+        }
+    }
+    JsonInstant.encodeToString(JsonArray(migrated))
 }.getOrDefault(raw)
 
 /**
@@ -403,7 +430,9 @@ class SettingsStore(
                 asrProviders = preferences[ASR_PROVIDERS]?.let { raw ->
                     runCatching {
                         JsonInstant.decodeFromString<List<ASRProviderSetting>>(
-                            stripRetiredProviderRecords(raw, retiredLocalAsrTypeNames),
+                            migrateElevenLabsSttRecord(
+                                stripRetiredProviderRecords(raw, retiredLocalAsrTypeNames),
+                            ),
                         )
                     }.getOrElse {
                         Log.w(TAG, "Failed to decode asrProviders, using default", it)
