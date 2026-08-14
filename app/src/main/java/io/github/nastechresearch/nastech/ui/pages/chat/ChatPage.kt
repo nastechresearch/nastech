@@ -415,6 +415,10 @@ private fun ChatPageContent(
                             )
                         }
                     },
+                    onLiveVoiceCommand = { command ->
+                        vm.handleMessageSend(listOf(UIMessagePart.Text(command)))
+                        "Nastech accepted the voice command and sent it to the active agent: $command"
+                    },
                 )
             },
             containerColor = Color.Transparent,

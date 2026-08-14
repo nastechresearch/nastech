@@ -102,6 +102,13 @@ sealed class ASRProviderSetting {
         val audioChunkDurationMs: Int = 20,
         val vadThreshold: Float = 0.5f,
         val vadSilenceDurationMs: Int = 300,
+        /**
+         * Configure a matching ElevenLabs Client Tool in the agent dashboard. Nastech routes
+         * its command parameter through the current chat agent, including enabled skills and
+         * normal local-tool approval policies.
+         */
+        val commandToolName: String = "nastech_command",
+        val commandParameterName: String = "command",
     ) : ASRProviderSetting() {
         override fun copyProvider(
             id: Uuid,

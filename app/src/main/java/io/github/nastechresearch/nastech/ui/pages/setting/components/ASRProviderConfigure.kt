@@ -111,10 +111,34 @@ private fun ElevenLabsSTSConfiguration(
     }
 
     FormItem(
-        label = { Text("Live call behavior") },
-        description = { Text("Nastech streams microphone audio to your agent and plays its returned voice directly. It does not use the separate ElevenLabs transcription or text-to-speech routes during this call.") },
+        label = { Text("Nastech command client tool") },
+        description = { Text("In the ElevenLabs agent dashboard, add a Client Tool with this exact name, enable Wait for response, and give it a required text parameter. When the voice agent calls it, Nastech sends the spoken command through the active chat agent, enabled skills, normal approvals, and connected tools.") },
     ) {
-        Text("PCM 16 kHz · interruption enabled", modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = setting.commandToolName,
+            onValueChange = { onValueChange(setting.copy(commandToolName = it.trim())) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("nastech_command") },
+        )
+    }
+
+    FormItem(
+        label = { Text("Command parameter") },
+        description = { Text("The required string parameter name on that ElevenLabs Client Tool. The default is command.") },
+    ) {
+        OutlinedTextField(
+            value = setting.commandParameterName,
+            onValueChange = { onValueChange(setting.copy(commandParameterName = it.trim())) },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("command") },
+        )
+    }
+
+    FormItem(
+        label = { Text("Live call behavior") },
+        description = { Text("Nastech routes agent audio through the loud speaker communication path, streams microphone audio to your agent, and plays its returned voice directly. It does not use separate ElevenLabs transcription or text-to-speech routes during this call.") },
+    ) {
+        Text("Negotiated PCM · loud speaker · interruption enabled", modifier = Modifier.fillMaxWidth())
     }
 }
 

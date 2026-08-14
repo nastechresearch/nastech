@@ -5,10 +5,14 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
+import android.os.Build
 import android.os.SystemClock
 import android.util.Base64
 import android.util.Log
@@ -57,6 +61,9 @@ class ElevenLabsSTSController(
     private val httpClient: OkHttpClient,
     private val provider: ASRProviderSetting.ElevenLabsSTS,
     private val onLiveCallStateChanged: (Boolean) -> Unit = {},
+    private val onClientCommand: (String) -> String = {
+        "No active Nastech chat is available to receive this voice command."
+    },
 ) : ASRController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -74,6 +81,12 @@ class ElevenLabsSTSController(
     private var playbackJob: Job? = null
     private var audioQueue: Channel<ByteArray>? = null
     private var onTranscriptChange: ((String) -> Unit)? = null
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var previousAudioMode: Int? = null
+    private var communicationDeviceSelected = false
+    private var callAudioFocusRequest: AudioFocusRequest? = null
+    private var inputSampleRate = provider.sampleRate.coerceAtLeast(8_000)
+    private var outputSampleRate = provider.sampleRate.coerceAtLeast(8_000)
 
     override fun start(onTranscriptChange: (String) -> Unit) {
         if (state.value.isRecording) return
@@ -92,9 +105,9 @@ class ElevenLabsSTSController(
 
         val generation = ++sessionGeneration
         this.onTranscriptChange = onTranscriptChange
+        acquireSpeakerRoute()
         setLiveCallActive(true)
         _state.value = ASRState(status = ASRStatus.Connecting, isAvailable = true)
-        startPlayback(generation)
         scope.launch(Dispatchers.IO) {
             runCatching {
                 val signedUrl = requestSignedConversationUrl()
@@ -169,14 +182,9 @@ class ElevenLabsSTSController(
                     finishWithError(generation, "ElevenLabs live agent call could not initialize")
                     return
                 }
-                _state.update {
-                    it.copy(
-                        status = ASRStatus.Listening,
-                        isAvailable = true,
-                        errorMessage = null,
-                    )
-                }
-                startRecorder(generation)
+                // Start capture and playback only after the server confirms its PCM
+                // formats. This creates the explicit session-ready transition used by
+                // Happy's realtime bridge and prevents format races.
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -214,14 +222,19 @@ class ElevenLabsSTSController(
         when (event.optString("type")) {
             "conversation_initiation_metadata" -> {
                 val metadata = event.optJSONObject("conversation_initiation_metadata_event")
-                val inputFormat = metadata?.optString("user_input_audio_format")
-                val outputFormat = metadata?.optString("agent_output_audio_format")
-                if (inputFormat != "pcm_16000" || outputFormat != "pcm_16000") {
-                    finishWithError(
-                        generation,
-                        "This ElevenLabs agent must use PCM 16 kHz input and output audio",
+                inputSampleRate = pcmSampleRate(metadata?.optString("user_input_audio_format"))
+                    ?: provider.sampleRate.coerceAtLeast(8_000)
+                outputSampleRate = pcmSampleRate(metadata?.optString("agent_output_audio_format"))
+                    ?: provider.sampleRate.coerceAtLeast(8_000)
+                startPlayback(generation)
+                _state.update {
+                    it.copy(
+                        status = ASRStatus.Listening,
+                        isAvailable = true,
+                        errorMessage = null,
                     )
                 }
+                startRecorder(generation)
             }
 
             "audio" -> {
@@ -258,6 +271,8 @@ class ElevenLabsSTSController(
                 }
             }
 
+            "client_tool_call" -> handleClientToolCall(generation, event)
+
             "interruption" -> {
                 flushAgentAudio()
             }
@@ -291,6 +306,10 @@ class ElevenLabsSTSController(
                 }
             }
 
+            "agent_response_complete" -> {
+                _state.update { it.copy(isAgentSpeaking = false) }
+            }
+
             "error" -> {
                 val message = event.optJSONObject("error_event")
                     ?.optString("message")
@@ -306,7 +325,7 @@ class ElevenLabsSTSController(
     private fun startRecorder(generation: Long) {
         recorderJob?.cancel()
         recorderJob = scope.launch(Dispatchers.IO) {
-            val sampleRate = provider.sampleRate.coerceAtLeast(8_000)
+            val sampleRate = inputSampleRate
             val chunkDurationMs = provider.audioChunkDurationMs.coerceIn(10, 100)
             val chunkBytes = (sampleRate * PCM_CHANNELS * (PCM16_BIT_DEPTH / 8) * chunkDurationMs / 1_000)
                 .coerceAtLeast(320)
@@ -366,7 +385,7 @@ class ElevenLabsSTSController(
         val queue = Channel<ByteArray>(Channel.UNLIMITED)
         audioQueue = queue
         playbackJob = scope.launch(Dispatchers.IO) {
-            val sampleRate = provider.sampleRate.coerceAtLeast(8_000)
+            val sampleRate = outputSampleRate
             val minBufferSize = AudioTrack.getMinBufferSize(
                 sampleRate,
                 AudioFormat.CHANNEL_OUT_MONO,
@@ -390,6 +409,7 @@ class ElevenLabsSTSController(
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build()
             audioTrack = track
+            track.setVolume(1f)
             track.play()
             try {
                 for (chunk in queue) {
@@ -405,6 +425,79 @@ class ElevenLabsSTSController(
                 }
             }
         }
+    }
+
+    private fun handleClientToolCall(generation: Long, event: JSONObject) {
+        val call = event.optJSONObject("client_tool_call") ?: return
+        val toolName = call.optString("tool_name").trim()
+        val toolCallId = call.optString("tool_call_id").trim()
+        if (toolCallId.isBlank()) return
+        val command = call.optJSONObject("parameters")
+            ?.optString(provider.commandParameterName)
+            .orEmpty()
+            .trim()
+        scope.launch {
+            val isCommandTool = toolName == provider.commandToolName
+            val result = when {
+                !isCommandTool -> "Nastech does not expose the requested client tool: $toolName"
+                command.isBlank() -> "Missing required ${provider.commandParameterName} parameter"
+                else -> runCatching { onClientCommand(command) }
+                    .getOrElse { error -> "Nastech command dispatch failed: ${error.message}" }
+            }
+            if (isCurrent(generation)) {
+                webSocket?.send(
+                    JSONObject()
+                        .put("type", "client_tool_result")
+                        .put("tool_call_id", toolCallId)
+                        .put("result", result)
+                        .put("is_error", !isCommandTool || command.isBlank())
+                        .toString(),
+                )
+            }
+        }
+    }
+
+    private fun pcmSampleRate(format: String?): Int? {
+        val match = Regex("pcm_(\\d+)").matchEntire(format.orEmpty().lowercase()) ?: return null
+        return match.groupValues.getOrNull(1)?.toIntOrNull()?.takeIf { it in 8_000..48_000 }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun acquireSpeakerRoute() {
+        previousAudioMode = audioManager.mode
+        audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+        callAudioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            )
+            .build()
+        callAudioFocusRequest?.let { audioManager.requestAudioFocus(it) }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val speaker = audioManager.availableCommunicationDevices.firstOrNull {
+                it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+            }
+            communicationDeviceSelected = speaker != null && audioManager.setCommunicationDevice(speaker)
+        } else {
+            audioManager.isSpeakerphoneOn = true
+            communicationDeviceSelected = true
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun releaseSpeakerRoute() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (communicationDeviceSelected) audioManager.clearCommunicationDevice()
+        } else if (communicationDeviceSelected) {
+            audioManager.isSpeakerphoneOn = false
+        }
+        communicationDeviceSelected = false
+        callAudioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        callAudioFocusRequest = null
+        previousAudioMode?.let { audioManager.mode = it }
+        previousAudioMode = null
     }
 
     private fun flushAgentAudio() {
@@ -471,6 +564,7 @@ class ElevenLabsSTSController(
                 null
             },
         )
+        if (!active) releaseSpeakerRoute()
         onLiveCallStateChanged(active)
     }
 

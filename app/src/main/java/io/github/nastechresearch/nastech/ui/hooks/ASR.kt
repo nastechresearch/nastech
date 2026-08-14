@@ -56,6 +56,7 @@ interface CustomAsrState {
     val state: StateFlow<ASRState>
     val isLiveConversation: Boolean
     fun start(onTranscriptChange: (String) -> Unit)
+    fun setLiveCommandHandler(handler: ((String) -> String)?)
     fun stop()
     fun cleanup()
 }
@@ -68,6 +69,7 @@ private class CustomAsrStateImpl(
     private val idleState = MutableStateFlow(ASRState())
 
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var liveCommandHandler: ((String) -> String)? = null
     private val audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
         .setAudioAttributes(
             AudioAttributes.Builder()
@@ -97,6 +99,10 @@ private class CustomAsrStateImpl(
         if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             controller?.start(onTranscriptChange)
         }
+    }
+
+    override fun setLiveCommandHandler(handler: ((String) -> String)?) {
+        liveCommandHandler = handler
     }
 
     override fun stop() {
@@ -129,13 +135,22 @@ private class CustomAsrStateImpl(
 
             is ASRProviderSetting.ElevenLabsSTS -> {
                 if (provider.apiKey.isBlank() || provider.agentId.isBlank()) return null
-                ElevenLabsSTSController(context, httpClient, provider) { active ->
-                    if (active) {
-                        NastechVoiceCallService.start(context)
-                    } else {
-                        NastechVoiceCallService.stop(context)
-                    }
-                }
+                ElevenLabsSTSController(
+                    context = context,
+                    httpClient = httpClient,
+                    provider = provider,
+                    onLiveCallStateChanged = { active ->
+                        if (active) {
+                            NastechVoiceCallService.start(context)
+                        } else {
+                            NastechVoiceCallService.stop(context)
+                        }
+                    },
+                    onClientCommand = { command ->
+                        liveCommandHandler?.invoke(command)
+                            ?: "No active Nastech chat is available to receive this voice command."
+                    },
+                )
             }
 
             is ASRProviderSetting.MiMo -> {

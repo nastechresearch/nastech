@@ -103,7 +103,10 @@ import me.rerere.hugeicons.stroke.ArrowDown01
 import me.rerere.hugeicons.stroke.ArrowUp01
 import me.rerere.hugeicons.stroke.ArrowUp02
 import me.rerere.hugeicons.stroke.Cancel01
+import me.rerere.hugeicons.stroke.Camera01
+import me.rerere.hugeicons.stroke.File01
 import me.rerere.hugeicons.stroke.FullScreen
+import me.rerere.hugeicons.stroke.Image02
 import me.rerere.hugeicons.stroke.Tick01
 import me.rerere.hugeicons.stroke.Zap
 import me.rerere.hugeicons.stroke.Voice
@@ -154,6 +157,7 @@ fun ChatInput(
     onSendClick: () -> Unit,
     onLongSendClick: () -> Unit,
     onQueueClick: () -> Unit,
+    onLiveVoiceCommand: (String) -> String,
 ) {
     val toaster = LocalToaster.current
     val assistant = settings.getCurrentAssistant()
@@ -201,6 +205,10 @@ fun ChatInput(
     }
 
     val asr = LocalASRState.current
+    DisposableEffect(asr, onLiveVoiceCommand) {
+        asr.setLiveCommandHandler(onLiveVoiceCommand)
+        onDispose { asr.setLiveCommandHandler(null) }
+    }
     val asrState by asr.state.collectAsState()
     val isLiveVoiceCall = asr.isLiveConversation
     val hapticFeedback = LocalHapticFeedback.current
@@ -780,7 +788,7 @@ private fun TextInputRow(
                     val mentionStart = state.textContent.text.lastIndexOf('@').coerceAtLeast(0)
                     val replacement = "@${skill.name} "
                     state.textContent.edit {
-                        replace(mentionStart, state.text.length, replacement)
+                        replace(mentionStart, state.textContent.text.length, replacement)
                         selection = TextRange(mentionStart + replacement.length)
                     }
                     onUpdateAssistant(
@@ -791,7 +799,7 @@ private fun TextInputRow(
                     val mentionStart = state.textContent.text.lastIndexOf('@').coerceAtLeast(0)
                     val replacement = "@${tool.mentionToken()} "
                     state.textContent.edit {
-                        replace(mentionStart, state.text.length, replacement)
+                        replace(mentionStart, state.textContent.text.length, replacement)
                         selection = TextRange(mentionStart + replacement.length)
                     }
                 },
