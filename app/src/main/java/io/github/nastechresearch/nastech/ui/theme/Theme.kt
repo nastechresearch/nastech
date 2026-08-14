@@ -4,6 +4,7 @@ import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
@@ -164,9 +165,15 @@ fun NastechTheme(
         MaterialExpressiveTheme(
             colorScheme = appearanceColorScheme,
             typography = nastechTypography(settings.glassAppearance.textScale),
-            content = content,
             motionScheme = MotionScheme.expressive()
-        )
+        ) {
+            // Many established screens rely on inherited content colour rather than explicitly
+            // setting text tint. Supplying the resolved foreground here protects those legacy
+            // labels on every transparent Black Silence surface.
+            CompositionLocalProvider(LocalContentColor provides appearanceColorScheme.onSurface) {
+                content()
+            }
+        }
     }
 }
 

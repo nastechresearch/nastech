@@ -34,6 +34,7 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,11 +70,13 @@ import me.rerere.locallm.litert.LiteRtCatalogEntry
 import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.data.api.HuggingFaceModelSearch
 import io.github.nastechresearch.nastech.data.datastore.DEFAULT_PROVIDERS
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import me.rerere.hugeicons.stroke.View
 import me.rerere.hugeicons.stroke.ViewOff
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.pages.setting.locallm.SettingLocalLlmViewModel
 import io.github.nastechresearch.nastech.ui.theme.JetbrainsMono
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
@@ -89,54 +92,60 @@ fun ProviderConfigure(
     modifier: Modifier = Modifier,
     onEdit: (provider: ProviderSetting) -> Unit
 ) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
-    ) {
-        if (!provider.builtIn) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                ProviderSetting.Types.forEachIndexed { index, type ->
-                    SegmentedButton(
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = ProviderSetting.Types.size
-                        ),
-                        label = { Text(type.simpleName ?: "") },
-                        selected = provider::class == type,
-                        onClick = { onEdit(provider.convertTo(type)) }
-                    )
+    val formContent = glassContentColor(
+        GlassSurface.SETTINGS,
+        MaterialTheme.colorScheme.surfaceContainerHigh,
+    )
+    CompositionLocalProvider(LocalContentColor provides formContent) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = modifier
+        ) {
+            if (!provider.builtIn) {
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    ProviderSetting.Types.forEachIndexed { index, type ->
+                        SegmentedButton(
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = ProviderSetting.Types.size
+                            ),
+                            label = { Text(type.simpleName ?: "") },
+                            selected = provider::class == type,
+                            onClick = { onEdit(provider.convertTo(type)) }
+                        )
+                    }
                 }
             }
-        }
 
-        when (provider) {
-            is ProviderSetting.OpenAI -> {
-                ProviderConfigureOpenAI(provider, onEdit)
+            when (provider) {
+                is ProviderSetting.OpenAI -> {
+                    ProviderConfigureOpenAI(provider, onEdit)
+                }
+
+                is ProviderSetting.Google -> {
+                    ProviderConfigureGoogle(provider, onEdit)
+                }
+
+                is ProviderSetting.Claude -> {
+                    ProviderConfigureClaude(provider, onEdit)
+                }
+
+                is ProviderSetting.AICore -> {
+                    ProviderConfigureAICore(provider, onEdit)
+                }
+
+                is ProviderSetting.LiteRtLocal -> {
+                    ProviderConfigureLiteRT(provider, onEdit)
+                }
+
+                is ProviderSetting.LlamaCppLocal -> {
+                    ProviderConfigureLlamaCpp(provider, onEdit)
+                }
+
+                is ProviderSetting.Codex -> Unit
+                is ProviderSetting.Grok -> Unit
+                is ProviderSetting.GeminiOAuth -> Unit
             }
-
-            is ProviderSetting.Google -> {
-                ProviderConfigureGoogle(provider, onEdit)
-            }
-
-            is ProviderSetting.Claude -> {
-                ProviderConfigureClaude(provider, onEdit)
-            }
-
-            is ProviderSetting.AICore -> {
-                ProviderConfigureAICore(provider, onEdit)
-            }
-
-            is ProviderSetting.LiteRtLocal -> {
-                ProviderConfigureLiteRT(provider, onEdit)
-            }
-
-            is ProviderSetting.LlamaCppLocal -> {
-                ProviderConfigureLlamaCpp(provider, onEdit)
-            }
-
-            is ProviderSetting.Codex -> Unit
-            is ProviderSetting.Grok -> Unit
-            is ProviderSetting.GeminiOAuth -> Unit
         }
     }
 }

@@ -47,6 +47,7 @@ import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MultiChoiceSegmentedButtonRow
@@ -70,6 +71,7 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -237,34 +239,36 @@ fun SettingProviderDetailPage(id: Uuid, vm: SettingVM = koinViewModel()) {
             }
         }
     ) {
-        HorizontalPager(
-            state = pager,
-            modifier = Modifier
-                .padding(it)
-                .consumeWindowInsets(it)
-        ) { page ->
-            when (page) {
-                0 -> {
-                    SettingProviderConfigPage(
-                        provider = provider,
-                        onEdit = {
-                            onEdit(it)
-                            toaster.show(
-                                context.getString(R.string.setting_provider_page_save_success),
-                                type = ToastType.Success
-                            )
-                        },
-                        onDelete = {
-                            onDelete()
-                        }
-                    )
-                }
+        CompositionLocalProvider(LocalContentColor provides detailContent) {
+            HorizontalPager(
+                state = pager,
+                modifier = Modifier
+                    .padding(it)
+                    .consumeWindowInsets(it)
+            ) { page ->
+                when (page) {
+                    0 -> {
+                        SettingProviderConfigPage(
+                            provider = provider,
+                            onEdit = {
+                                onEdit(it)
+                                toaster.show(
+                                    context.getString(R.string.setting_provider_page_save_success),
+                                    type = ToastType.Success
+                                )
+                            },
+                            onDelete = {
+                                onDelete()
+                            }
+                        )
+                    }
 
-                1 -> {
-                    SettingProviderModelPage(
-                        provider = provider,
-                        onEdit = onEdit
-                    )
+                    1 -> {
+                        SettingProviderModelPage(
+                            provider = provider,
+                            onEdit = onEdit
+                        )
+                    }
                 }
             }
         }
