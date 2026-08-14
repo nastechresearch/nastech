@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nastech Artifact</title>
+  <style>
+    :root {
+      --bg: {{BACKGROUND_COLOR}};
+      --surface: {{SURFACE_COLOR}};
+      --surface-variant: {{SURFACE_VARIANT_COLOR}};
+      --text: {{ON_BACKGROUND_COLOR}};
+      --muted: {{ON_SURFACE_VARIANT_COLOR}};
+      --accent: {{PRIMARY_COLOR}};
+      --outline: {{OUTLINE_VARIANT_COLOR}};
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px 14px 32px;
+      overflow-x: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 14% 4%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 32%),
+        radial-gradient(circle at 88% 8%, color-mix(in srgb, #83d9b7 15%, transparent), transparent 30%),
+        var(--bg);
+      font-family: Inter, Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.7;
+      letter-spacing: .006em;
+    }
+    body::before, body::after {
+      content: "";
+      position: fixed;
+      width: 260px;
+      height: 260px;
+      border-radius: 999px;
+      pointer-events: none;
+      filter: blur(76px);
+      opacity: .16;
+      animation: nastech-drift 11s ease-in-out infinite alternate;
+    }
+    body::before { background: var(--accent); top: -132px; left: -112px; }
+    body::after { background: #83d9b7; right: -126px; bottom: -132px; animation-delay: -4s; }
+    @keyframes nastech-drift {
+      from { transform: translate3d(0, 0, 0) scale(.94); }
+      to { transform: translate3d(46px, 35px, 0) scale(1.12); }
+    }
+    .artifact {
+      position: relative;
+      z-index: 1;
+      width: min(900px, 100%);
+      margin: 0 auto;
+      padding: 22px;
+      border: 1px solid color-mix(in srgb, var(--outline) 74%, transparent);
+      border-radius: 24px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--surface) 93%, white 7%), color-mix(in srgb, var(--surface) 96%, black 4%));
+      box-shadow: 0 25px 70px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.07);
+      animation: artifact-enter .5s cubic-bezier(.2,.8,.2,1) both;
+    }
+    @keyframes artifact-enter {
+      from { opacity: 0; transform: translateY(13px) scale(.987); filter: blur(4px); }
+      to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
+    .artifact-header { display: flex; align-items: center; gap: 11px; margin-bottom: 18px; }
+    .artifact-mark {
+      width: 34px; height: 34px; display: grid; place-items: center; border-radius: 12px;
+      color: var(--text); font-size: 16px;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 56%, transparent), rgba(131,217,183,.30));
+      border: 1px solid color-mix(in srgb, var(--outline) 82%, transparent);
+      box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 27%, transparent);
+    }
+    .artifact-title { font-weight: 700; letter-spacing: -.015em; }
+    .artifact-subtitle { color: var(--muted); font-size: 12px; }
+    .content { font-size: 15.5px; }
+    .content > :first-child { margin-top: 0; }
+    .content > :last-child { margin-bottom: 0; }
+    h1, h2, h3, h4, h5, h6 { letter-spacing: -.032em; line-height: 1.26; color: var(--text); }
+    h1 { font-size: 28px; margin: 1.35em 0 .5em; }
+    h2 { font-size: 22px; margin: 1.35em 0 .5em; }
+    h3 { font-size: 18px; margin: 1.25em 0 .45em; }
+    p { margin: .78em 0; }
+    strong { color: var(--text); font-weight: 750; }
+    em { color: color-mix(in srgb, var(--text) 86%, var(--muted)); }
+    a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 43%, transparent); }
+    ul, ol { padding-left: 1.5em; }
+    li { margin: .35em 0; }
+    li::marker { color: var(--accent); }
+    blockquote {
+      margin: 18px 0;
+      padding: 12px 16px;
+      color: color-mix(in srgb, var(--text) 82%, var(--muted));
+      border-left: 3px solid var(--accent);
+      border-radius: 0 13px 13px 0;
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+    code { padding: 2px 6px; border-radius: 7px; border: 1px solid color-mix(in srgb, var(--outline) 64%, transparent); background: color-mix(in srgb, var(--surface-variant) 74%, transparent); font-family: "SFMono-Regular", Consolas, monospace; font-size: .88em; }
+    pre { margin: 18px 0; padding: 18px; overflow-x: auto; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--outline) 60%, transparent); background: linear-gradient(135deg, color-mix(in srgb, var(--surface-variant) 86%, black 14%), color-mix(in srgb, var(--bg) 70%, var(--surface) 30%)); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 15px 40px rgba(0,0,0,.18); }
+    pre code { padding: 0; border: 0; background: transparent; color: var(--text); line-height: 1.6; }
+    table { width: 100%; margin: 20px 0; border-spacing: 0; border-collapse: separate; overflow: hidden; border: 1px solid color-mix(in srgb, var(--outline) 70%, transparent); border-radius: 14px; }
+    th, td { padding: 11px 13px; text-align: left; border-bottom: 1px solid color-mix(in srgb, var(--outline) 49%, transparent); }
+    th { background: color-mix(in srgb, var(--surface-variant) 75%, transparent); font-weight: 700; }
+    tr:last-child td { border-bottom: 0; }
+    hr { height: 1px; margin: 25px 0; border: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--outline) 87%, transparent), transparent); }
+    img { max-width: 100%; height: auto; border-radius: 14px; }
+    @media (max-width: 600px) { body { padding: 12px 8px 24px; } .artifact { padding: 18px; border-radius: 20px; } .content { font-size: 15px; } h1 { font-size: 24px; } h2 { font-size: 20px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <article class="artifact">
+    <header class="artifact-header">
+      <div class="artifact-mark">✦</div>
+      <div>
+        <div class="artifact-title">Nastech Artifact</div>
+        <div class="artifact-subtitle">Interactive response preview</div>
+      </div>
+    </header>
+    <main class="content">{{CONTENT_HTML}}</main>
+  </article>
+</body>
+</html>

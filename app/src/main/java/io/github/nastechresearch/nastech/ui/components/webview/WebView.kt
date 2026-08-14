@@ -2,6 +2,7 @@ package io.github.nastechresearch.nastech.ui.components.webview
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.net.Uri
 import android.util.Log
 import android.view.ViewGroup.LayoutParams
 import android.webkit.ConsoleMessage
@@ -23,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import java.io.ByteArrayInputStream
 
 private const val TAG = "WebView"
 
@@ -49,13 +51,31 @@ internal class MyWebChromeClient(private val state: WebViewState) : WebChromeCli
 }
 
 internal class MyWebViewClient(private val state: WebViewState) : WebViewClient() {
+    private fun isAllowedIsolatedPreviewUri(uri: Uri): Boolean =
+        uri.scheme.equals("https", ignoreCase = true) && uri.host.equals("nastech.local", ignoreCase = true)
+
+    private fun blockedResponse() = WebResourceResponse(
+        "text/plain",
+        "UTF-8",
+        403,
+        "Blocked in isolated preview",
+        emptyMap(),
+        ByteArrayInputStream(ByteArray(0)),
+    )
+
     override fun shouldInterceptRequest(
         view: WebView,
         request: WebResourceRequest
     ): WebResourceResponse? {
+        if (state.isIsolatedContent && !isAllowedIsolatedPreviewUri(request.url)) {
+            return blockedResponse()
+        }
         return WebViewLocalAssets.intercept(view.context.applicationContext, request.url)
             ?: super.shouldInterceptRequest(view, request)
     }
+
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+        state.isIsolatedContent && !isAllowedIsolatedPreviewUri(request.url)
 
     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
@@ -122,17 +142,25 @@ fun WebView(
 
                     onCreated(this)
 
-                    settings.javaScriptEnabled = true // Enable JavaScript
-                    settings.domStorageEnabled = true
-                    settings.allowContentAccess = true
+                    settings.javaScriptEnabled = true // Needed for self-contained interactive previews.
+                    settings.domStorageEnabled = !state.isIsolatedContent
+                    settings.allowContentAccess = !state.isIsolatedContent
+                    settings.allowFileAccess = !state.isIsolatedContent
+                    settings.allowFileAccessFromFileURLs = false
+                    settings.allowUniversalAccessFromFileURLs = false
+                    settings.javaScriptCanOpenWindowsAutomatically = false
+                    settings.setSupportMultipleWindows(false)
+                    settings.mediaPlaybackRequiresUserGesture = true
                     settings.apply(state.settings)
 
                     // Use the created clients
                     this.webChromeClient = webChromeClient
                     this.webViewClient = webViewClient
 
-                    state.interfaces.forEach { (name, obj) ->
-                        addJavascriptInterface(obj, name)
+                    if (!state.isIsolatedContent) {
+                        state.interfaces.forEach { (name, obj) ->
+                            addJavascriptInterface(obj, name)
+                        }
                     }
                 }
             },
@@ -150,8 +178,10 @@ fun WebView(
             },
             update = { webView ->
                 state.webView = webView
-                state.interfaces.forEach { (name, obj) ->
-                    webView.addJavascriptInterface(obj, name)
+                if (!state.isIsolatedContent) {
+                    state.interfaces.forEach { (name, obj) ->
+                        webView.addJavascriptInterface(obj, name)
+                    }
                 }
                 Log.d(TAG, "AndroidView: Updating WebView")
                 // Ensure clients are updated if state changes (though unlikely here)
@@ -160,6 +190,16 @@ fun WebView(
 
                 // Update settings that might change
                 webView.settings.javaScriptEnabled = state.javaScriptEnabled
+                if (state.isIsolatedContent) {
+                    webView.settings.domStorageEnabled = false
+                    webView.settings.allowContentAccess = false
+                    webView.settings.allowFileAccess = false
+                    webView.settings.allowFileAccessFromFileURLs = false
+                    webView.settings.allowUniversalAccessFromFileURLs = false
+                    webView.settings.javaScriptCanOpenWindowsAutomatically = false
+                    webView.settings.setSupportMultipleWindows(false)
+                    webView.settings.mediaPlaybackRequiresUserGesture = true
+                }
 
                 when (val content = state.content) {
                     is WebContent.Url -> {
@@ -228,7 +268,9 @@ sealed class WebContent {
 class WebViewState(
     initialContent: WebContent = WebContent.NavigatorOnly,
     val interfaces: Map<String, Any> = emptyMap(),
-    val settings: WebSettings.() -> Unit = {}
+    val settings: WebSettings.() -> Unit = {},
+    /** Generated assistant artifacts run in a network, file, and bridge-isolated WebView. */
+    val isIsolatedContent: Boolean = false,
 ) {
     // --- Content State ---
     var content: WebContent by mutableStateOf(initialContent)
@@ -332,11 +374,13 @@ fun rememberWebViewState(
     additionalHttpHeaders: Map<String, String> = emptyMap(),
     interfaces: Map<String, Any> = emptyMap(),
     settings: WebSettings.() -> Unit = {},
-) = remember(url, additionalHttpHeaders) { // Use keys for better recomposition control
+    isIsolatedContent: Boolean = false,
+) = remember(url, additionalHttpHeaders, isIsolatedContent) { // Use keys for better recomposition control
     WebViewState(
         initialContent = WebContent.Url(url, additionalHttpHeaders),
         interfaces = interfaces,
-        settings = settings
+        settings = settings,
+        isIsolatedContent = isIsolatedContent,
     )
 }
 
@@ -349,10 +393,12 @@ fun rememberWebViewState(
     historyUrl: String? = null,
     interfaces: Map<String, Any> = emptyMap(),
     settings: WebSettings.() -> Unit = {},
-) = remember(data, baseUrl, encoding, mimeType, historyUrl) { // Use keys
+    isIsolatedContent: Boolean = false,
+) = remember(data, baseUrl, encoding, mimeType, historyUrl, isIsolatedContent) { // Use keys for better recomposition control
     WebViewState(
         initialContent = WebContent.Data(data, baseUrl, encoding, mimeType, historyUrl),
         interfaces = interfaces,
-        settings = settings
+        settings = settings,
+        isIsolatedContent = isIsolatedContent,
     )
 }

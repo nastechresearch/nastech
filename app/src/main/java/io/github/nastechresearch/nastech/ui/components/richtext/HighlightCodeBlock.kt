@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ModalBottomSheet
@@ -289,6 +290,95 @@ fun HighlightCodeBlock(
     }
 }
 
+/**
+ * Renders a complete HTML assistant reply as a safe, animated in-chat artifact. A single tap
+ * opens the isolated full-screen preview; a long press exposes explicit copy or export actions.
+ */
+@Composable
+fun HtmlResponseArtifact(
+    html: String,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val navController = LocalNavController.current
+    val clipboardManager = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    var showActions by remember(html) { mutableStateOf(false) }
+    var showCode by remember(html) { mutableStateOf(false) }
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/html"),
+    ) { uri: Uri? ->
+        uri?.let {
+            scope.launch {
+                runCatching {
+                    context.contentResolver.openOutputStream(it)?.use { output ->
+                        output.write(html.toByteArray())
+                    }
+                }.onFailure { error ->
+                    Log.e(TAG, "HtmlResponseArtifact: failed to save document", error)
+                }
+            }
+        }
+    }
+    fun openFullScreen() {
+        val contentId = WebViewContentCache.store(
+            context.cacheDir,
+            buildCodePreviewHtml(code = html, language = "html"),
+        )
+        navController.navigate(Screen.WebView(contentId = contentId))
+    }
+
+    CodeBlockPreview(
+        code = html,
+        language = "html",
+        cleanPreview = true,
+        onOpenFullScreen = ::openFullScreen,
+        onOpenActions = { showActions = true },
+        modifier = modifier,
+    )
+
+    if (showActions) {
+        HtmlPreviewActionSheet(
+            onDismiss = { showActions = false },
+            onViewCode = { showActions = false; showCode = true },
+            onOpenFullScreen = ::openFullScreen,
+            onCopy = {
+                scope.launch {
+                    clipboardManager.setClipEntry(ClipEntry(ClipData.newPlainText("html", html)))
+                }
+            },
+            onDownload = {
+                createDocumentLauncher.launch(
+                    "nastech_artifact_${Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())}.html",
+                )
+            },
+        )
+    }
+
+    if (showCode) {
+        ModalBottomSheet(onDismissRequest = { showCode = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            ) {
+                Text("HTML source", style = MaterialTheme.typography.titleLarge)
+                SelectionContainer {
+                    Text(
+                        text = html,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = JetbrainsMono),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(420.dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(top = 12.dp, bottom = 24.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun CodeBlockWithLineNumbersWrapped(
     displayLines: List<String>,
@@ -529,7 +619,8 @@ private fun CodeBlockPreview(
             displayZoomControls = false
             useWideViewPort = true
             loadWithOverviewMode = true
-        }
+        },
+        isIsolatedContent = true,
     )
 
     Box(
@@ -578,16 +669,29 @@ private fun HtmlPreviewActionSheet(
             TextButton(onClick = { onOpenFullScreen(); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("Open full screen") }
             TextButton(onClick = { onViewCode(); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("View code") }
             TextButton(onClick = { onCopy(); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("Copy HTML") }
-            TextButton(onClick = { onDownload(); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("Download HTML") }
+            TextButton(onClick = { onDownload(); onDismiss() }, modifier = Modifier.fillMaxWidth()) { Text("Save a copy…") }
         }
     }
 }
 
+private const val ARTIFACT_CONTENT_SECURITY_POLICY =
+    "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: https://nastech.local; font-src https://nastech.local;"
+
 private fun buildCodePreviewHtml(code: String, language: String): String {
-    return if (language == "svg") {
-        """<!DOCTYPE html><html><body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;">$code</body></html>"""
-    } else {
+    val document = if (language == "svg") {
+        """<!DOCTYPE html><html><head></head><body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;">$code</body></html>"""
+    } else if (code.contains("<html", ignoreCase = true)) {
         code
+    } else {
+        """<!DOCTYPE html><html><head></head><body>$code</body></html>"""
+    }
+    val policy = "<meta http-equiv=\"Content-Security-Policy\" content=\"$ARTIFACT_CONTENT_SECURITY_POLICY\">"
+    return when {
+        document.contains("</head>", ignoreCase = true) ->
+            Regex("</head>", RegexOption.IGNORE_CASE).replaceFirst(document, "$policy</head>")
+        document.contains("<html", ignoreCase = true) ->
+            Regex("(<html[^>]*>)", RegexOption.IGNORE_CASE).replaceFirst(document, "\$1<head>$policy</head>")
+        else -> "<!DOCTYPE html><html><head>$policy</head><body>$document</body></html>"
     }
 }
 

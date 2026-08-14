@@ -83,6 +83,7 @@ import io.github.nastechresearch.nastech.data.model.Assistant
 import io.github.nastechresearch.nastech.data.model.AssistantAffectScope
 import io.github.nastechresearch.nastech.data.model.MessageNode
 import io.github.nastechresearch.nastech.data.model.replaceRegexes
+import io.github.nastechresearch.nastech.ui.components.richtext.HtmlResponseArtifact
 import io.github.nastechresearch.nastech.ui.components.richtext.MarkdownBlock
 import io.github.nastechresearch.nastech.ui.components.richtext.ZoomableAsyncImage
 import io.github.nastechresearch.nastech.ui.components.richtext.buildMarkdownPreviewHtml
@@ -276,6 +277,12 @@ fun ChatMessage(
     }
 }
 
+private fun isCompleteHtmlArtifact(content: String): Boolean {
+    val trimmed = content.trimStart()
+    return (trimmed.startsWith("<!doctype html", ignoreCase = true) || trimmed.startsWith("<html", ignoreCase = true)) &&
+        trimmed.contains("</html>", ignoreCase = true)
+}
+
 @OptIn(FlowPreview::class)
 @Composable
 private fun MessagePartsBlock(
@@ -462,20 +469,33 @@ private fun MessagePartsBlock(
                             }
                         }
 
+                        // A complete assistant HTML document is a first-class response artifact. It stays
+                        // cache-only and isolated until the user explicitly chooses Copy or Save a copy.
+                        val renderedAsHtmlArtifact = role != MessageRole.USER && !loading && isCompleteHtmlArtifact(part.text)
+
                         // 流式生成期间不启用 SelectionContainer：Markdown 在不断重渲染，
                         // 内部可选择的 Text 会频繁注册/注销，与 Compose 选择工具栏在绘制阶段
                         // 对 selectable 列表的排序产生并发修改，导致 ConcurrentModificationException。
                         // 生成结束后内容稳定，再启用文本选择。
                         if (!renderedAsWebviewCard) {
-                            if (loading) {
-                                textContent()
+                            if (renderedAsHtmlArtifact) {
+                                HtmlResponseArtifact(
+                                    html = part.text,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .animateContentSize(),
+                                )
                             } else {
-                                SelectionContainer {
+                                if (loading) {
                                     textContent()
+                                } else {
+                                    SelectionContainer {
+                                        textContent()
+                                    }
                                 }
-                            }
-                            if (role != MessageRole.USER) {
-                                ChatRichPreview(part.text)
+                                if (role != MessageRole.USER) {
+                                    ChatRichPreview(part.text)
+                                }
                             }
                         }
                     }

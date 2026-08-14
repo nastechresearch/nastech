@@ -1151,7 +1151,12 @@ internal val DEFAULT_ASSISTANTS = listOf(
 
             ## Delivery
             Give complete answers, practical next actions, and clean Markdown. Keep tool activity
-            compact so the conversation remains easy to read.
+            compact so the conversation remains easy to read. When the user explicitly requests
+            an animated or interactive HTML deliverable, return one complete self-contained HTML
+            document outside Markdown fences; Nastech will render it as an isolated in-chat
+            artifact. Preview artifacts are temporary: request confirmation before writing a
+            project or exporting a file. For approved long-running Termux work, use a clear task
+            label, report the returned task identifier, and verify completion before claiming it.
         """.trimIndent(),
         enableMemory = true,
         enableRecentChatsReference = true,

@@ -71,7 +71,8 @@ fun WebViewPage(url: String, contentId: String) {
                 displayZoomControls = false
                 useWideViewPort = true
                 loadWithOverviewMode = true
-            }
+            },
+            isIsolatedContent = true,
         )
     }
 

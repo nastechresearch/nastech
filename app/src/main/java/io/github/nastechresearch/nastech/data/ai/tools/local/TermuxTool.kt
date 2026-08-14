@@ -31,6 +31,8 @@ private const val TERMUX_RUN_COMMAND_SERVICE = "com.termux.app.RunCommandService
 private const val TERMUX_RUN_COMMAND_ACTION = "com.termux.RUN_COMMAND"
 private const val TERMUX_BIN_DIR = "/data/data/com.termux/files/usr/bin"
 private const val TERMUX_HOME_DIR = "/data/data/com.termux/files/home"
+private const val TERMUX_COMMAND_LABEL = "Nastech agent command"
+private val DETACHED_TASK_PID = Regex("nastech_bg_pid=(\\d+)")
 
 // Termux delivers stdout / stderr / exitCode via a result Bundle attached to the
 // RUN_COMMAND_PENDING_INTENT we register. Documented at:
@@ -168,6 +170,7 @@ internal suspend fun runCommandCapture(
     // Default reads from the runtime holder so callers that don't pass a timeout get the
     // user-configured value, not a stale compile-time constant.
     timeoutMs: Long = TermuxRuntime.commandTimeoutMs,
+    commandLabel: String = TERMUX_COMMAND_LABEL,
 ): CaptureResult {
     // Mark Termux as freshly touched BEFORE we issue the broadcast. The notification
     // listener uses this signal to suppress Termux's foreground-service notification
@@ -242,6 +245,8 @@ internal suspend fun runCommandCapture(
         putExtra("com.termux.RUN_COMMAND_ARGUMENTS", arguments)
         putExtra("com.termux.RUN_COMMAND_WORKDIR", workingDir)
         putExtra("com.termux.RUN_COMMAND_BACKGROUND", true)
+        putExtra("com.termux.RUN_COMMAND_LABEL", commandLabel.take(80))
+        putExtra("com.termux.RUN_COMMAND_DESCRIPTION", "Started by Nastech after user approval. Results return to the active chat.")
         putExtra(EXTRA_PENDING_INTENT, pi)
     }
 
@@ -323,6 +328,10 @@ fun termuxRunCommandTool(context: Context): Tool = Tool(
                     put("type", "string")
                     put("description", "Working directory. Defaults to Termux home (/data/data/com.termux/files/home).")
                 })
+                put("task_label", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Optional short label shown in Termux and returned with the task result, for example 'Install project dependencies'.")
+                })
                 put("interactive", buildJsonObject {
                     put("type", "boolean")
                     put("description", "If true, opens a visible Termux session and does NOT capture output. Default false (background + capture).")
@@ -344,6 +353,11 @@ fun termuxRunCommandTool(context: Context): Tool = Tool(
         val argumentsArr = input.jsonObject["arguments"]?.jsonArray
         val workingDir = input.jsonObject["working_dir"]?.jsonPrimitive?.contentOrNull
             ?: TermuxRuntime.defaultWorkingDir
+        val taskLabel = input.jsonObject["task_label"]?.jsonPrimitive?.contentOrNull
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.take(80)
+            ?: TERMUX_COMMAND_LABEL
         val interactive = input.jsonObject["interactive"]?.jsonPrimitive?.contentOrNull
             ?.toBooleanStrictOrNull() ?: false
         val background = input.jsonObject["background"]?.jsonPrimitive?.contentOrNull
@@ -440,6 +454,7 @@ fun termuxRunCommandTool(context: Context): Tool = Tool(
                 putExtra("com.termux.RUN_COMMAND_WORKDIR", workingDir)
                 putExtra("com.termux.RUN_COMMAND_BACKGROUND", false)
                 putExtra("com.termux.RUN_COMMAND_SESSION_ACTION", "0")
+                putExtra("com.termux.RUN_COMMAND_LABEL", taskLabel)
             }
             return@Tool try {
                 context.startService(intent)
@@ -480,11 +495,25 @@ fun termuxRunCommandTool(context: Context): Tool = Tool(
             arguments = resolvedArgs,
             workingDir = workingDir,
             timeoutMs = timeoutMs,
+            commandLabel = taskLabel,
         )) {
             is CaptureResult.Success -> buildJsonObject {
                 put("success", true)
-                put("mode", "capture")
+                put("mode", if (background) "background_task" else "capture")
+                put("label", taskLabel)
                 put("exit_code", res.exitCode)
+                if (background) {
+                    val pid = DETACHED_TASK_PID.find(res.stdout)?.groupValues?.getOrNull(1)
+                    if (pid != null) {
+                        put("task_id", "termux:$pid")
+                        put("pid", pid)
+                        put("status", "running")
+                        put("next_action", "The process is detached. To inspect or stop it, ask the user to open Termux, or run an explicitly approved follow-up command such as `ps -p $pid -f` or `kill $pid`.")
+                    } else {
+                        put("status", "started_without_pid")
+                        put("next_action", "Termux accepted the detached command but did not return a PID. Ask the user to inspect it in Termux before attempting a follow-up action.")
+                    }
+                }
                 val maxOut = TermuxRuntime.maxStdoutBytes
                 val maxErr = TermuxRuntime.maxStderrBytes
                 // maxStdoutBytes/maxStderrBytes are UTF-8 byte budgets. Measure and cut on bytes

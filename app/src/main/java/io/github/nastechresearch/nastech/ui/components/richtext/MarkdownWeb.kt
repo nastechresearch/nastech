@@ -2,21 +2,38 @@ package io.github.nastechresearch.nastech.ui.components.richtext
 
 import android.content.Context
 import androidx.compose.material3.ColorScheme
-import io.github.nastechresearch.nastech.utils.base64Encode
 import io.github.nastechresearch.nastech.utils.toCssHex
+import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
+import org.intellij.markdown.html.HtmlGenerator
+import org.intellij.markdown.parser.MarkdownParser
+import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
+
+private val previewFlavour by lazy {
+    GFMFlavourDescriptor(makeHttpsAutoLinks = true, useSafeLinks = true)
+}
+
+private val previewParser by lazy { MarkdownParser(previewFlavour) }
 
 /**
- * Build HTML page for markdown preview with support for:
- * - Markdown rendering via marked.js
- * - LaTeX math via KaTeX
- * - Mermaid diagrams
- * - Syntax highlighting via highlight.js
+ * Converts assistant Markdown to a self-contained artifact document. The native parser and
+ * sanitiser run before the WebView is created, so generated Markdown cannot inject scripts,
+ * frames, event handlers, or browser-privileged markup into the preview surface.
  */
 fun buildMarkdownPreviewHtml(context: Context, markdown: String, colorScheme: ColorScheme): String {
-    val htmlTemplate = context.assets.open("html/mark.html").bufferedReader().use { it.readText() }
+    val tree = previewParser.buildMarkdownTreeFromString(markdown)
+    val generatedHtml = HtmlGenerator(markdown, tree, previewFlavour).generateHtml()
+    val safeHtml = Jsoup.clean(
+        generatedHtml,
+        "",
+        Safelist.relaxed()
+            .addTags("table", "thead", "tbody", "tr", "th", "td", "pre", "code", "hr")
+            .addAttributes("code", "class"),
+    )
+    val htmlTemplate = context.assets.open("html/nastech_artifact.html").bufferedReader().use { it.readText() }
 
     return htmlTemplate
-        .replace("{{MARKDOWN_BASE64}}", markdown.base64Encode())
+        .replace("{{CONTENT_HTML}}", safeHtml)
         .replace("{{BACKGROUND_COLOR}}", colorScheme.background.toCssHex())
         .replace("{{ON_BACKGROUND_COLOR}}", colorScheme.onBackground.toCssHex())
         .replace("{{SURFACE_COLOR}}", colorScheme.surface.toCssHex())
