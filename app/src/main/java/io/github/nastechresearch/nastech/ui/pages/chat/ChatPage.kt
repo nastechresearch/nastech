@@ -5,13 +5,33 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
@@ -31,6 +51,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +60,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -53,6 +75,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import me.rerere.ai.core.MessageRole
+import me.rerere.asr.ASRState
 import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.common.android.appTempFolder
@@ -62,6 +85,7 @@ import me.rerere.hugeicons.stroke.LeftToRightListBullet
 import me.rerere.hugeicons.stroke.Menu03
 import me.rerere.hugeicons.stroke.MessageAdd01
 import io.github.nastechresearch.nastech.R
+import io.github.nastechresearch.nastech.data.datastore.GlassSurface
 import io.github.nastechresearch.nastech.data.datastore.Settings
 import io.github.nastechresearch.nastech.data.datastore.getCurrentAssistant
 import io.github.nastechresearch.nastech.data.files.FilesManager
@@ -77,10 +101,13 @@ import io.github.nastechresearch.nastech.ui.components.ui.UpdateCard
 import io.github.nastechresearch.nastech.ui.components.ui.permission.PermissionCamera
 import io.github.nastechresearch.nastech.ui.components.ui.permission.PermissionManager
 import io.github.nastechresearch.nastech.ui.components.ui.permission.rememberPermissionState
+import io.github.nastechresearch.nastech.ui.context.LocalASRState
 import io.github.nastechresearch.nastech.ui.context.LocalNavController
 import io.github.nastechresearch.nastech.ui.context.LocalToaster
 import io.github.nastechresearch.nastech.ui.context.Navigator
 import io.github.nastechresearch.nastech.ui.hooks.ChatInputState
+import io.github.nastechresearch.nastech.ui.theme.glassContentColor
+import io.github.nastechresearch.nastech.ui.theme.glassSurface
 import io.github.nastechresearch.nastech.utils.ImageUtils
 import io.github.nastechresearch.nastech.utils.base64Decode
 import io.github.nastechresearch.nastech.utils.isAllowedFileType
@@ -284,6 +311,9 @@ private fun ChatPageContent(
     var previewMode by rememberSaveable { mutableStateOf(false) }
     val hazeState = rememberHazeState()
     val assistant = setting.getCurrentAssistant()
+    val asr = LocalASRState.current
+    val asrState by asr.state.collectAsState()
+    val isLiveCall = asr.isLiveConversation && asrState.isRecording
     var showFilesSheet by remember { mutableStateOf(false) }
 
     val completionProviders = remember(assistant.workspaceId, conversation.workspaceCwd, workspaceRepository) {
@@ -304,9 +334,11 @@ private fun ChatPageContent(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxSize()
     ) {
-        AssistantBackground(setting = setting, modifier = Modifier.hazeSource(hazeState))
-        Scaffold(
-            topBar = {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AssistantBackground(setting = setting, modifier = Modifier.hazeSource(hazeState))
+            Scaffold(
+                modifier = if (isLiveCall) Modifier.blur(18.dp) else Modifier,
+                topBar = {
                 TopBar(
                     conversation = conversation,
                     bigScreen = bigScreen,
@@ -510,6 +542,18 @@ private fun ChatPageContent(
                 }
             }
         }
+            AnimatedVisibility(
+                visible = isLiveCall,
+                modifier = Modifier.fillMaxSize(),
+                enter = fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.985f),
+                exit = fadeOut(animationSpec = tween(160)) + scaleOut(targetScale = 0.985f),
+            ) {
+                NastechVoiceCallOverlay(
+                    state = asrState,
+                    onEndCall = asr::stop,
+                )
+            }
+        }
 
         if (showFilesSheet) {
             ChatFilesPickerSheet(
@@ -520,6 +564,139 @@ private fun ChatPageContent(
                 vm = vm,
                 onDismiss = { showFilesSheet = false },
             )
+        }
+    }
+}
+
+@Composable
+private fun NastechVoiceCallOverlay(
+    state: ASRState,
+    onEndCall: () -> Unit,
+) {
+    val callGlass = glassSurface(GlassSurface.DIALOG, Color(0xFF09131E))
+    val contentColor = glassContentColor(GlassSurface.DIALOG, Color(0xFFF5F9FF))
+    val spokenCount = state.agentSpeechProgressChars.coerceIn(0, state.agentResponse.length)
+    val spokenResponse = state.agentResponse.take(spokenCount)
+    val status = when {
+        state.isAgentSpeaking -> "Nastech is speaking"
+        state.transcript.isNotBlank() -> "Nastech is listening"
+        else -> "Nastech Voice is connected"
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(onClick = {}),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = Color.Black.copy(alpha = 0.74f),
+        ) {}
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            shape = RoundedCornerShape(32.dp),
+            color = callGlass.container,
+            border = BorderStroke(
+                1.dp,
+                if (callGlass.enabled) callGlass.border else MaterialTheme.colorScheme.outlineVariant,
+            ),
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    text = "Nastech Voice",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = contentColor,
+                )
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = contentColor.copy(alpha = 0.76f),
+                )
+                NastechVoiceWaveform(
+                    agentSpeaking = state.isAgentSpeaking,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.Black.copy(alpha = 0.30f),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = if (spokenResponse.isBlank()) {
+                                "Audio will appear here as Nastech speaks."
+                            } else {
+                                spokenResponse
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = contentColor,
+                        )
+                        if (state.transcript.isNotBlank()) {
+                            Text(
+                                text = "You: ${state.transcript}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = contentColor.copy(alpha = 0.70f),
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = "Your call remains active when this screen is not visible. Return here for the live transcript.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = contentColor.copy(alpha = 0.62f),
+                )
+                Button(
+                    onClick = onEndCall,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                    ),
+                    shape = RoundedCornerShape(18.dp),
+                ) {
+                    Text("End call")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NastechVoiceWaveform(
+    agentSpeaking: Boolean,
+    color: Color,
+) {
+    val transition = rememberInfiniteTransition(label = "nastechVoiceWaveform")
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(5) { index ->
+            val heightScale by transition.animateFloat(
+                initialValue = if (agentSpeaking) 0.34f else 0.18f,
+                targetValue = if (agentSpeaking) 1f else 0.34f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 460, delayMillis = index * 90),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "nastechVoiceBar$index",
+            )
+            Surface(
+                modifier = Modifier
+                    .width(if (index == 2) 9.dp else 7.dp)
+                    .height((42f * heightScale).dp),
+                shape = CircleShape,
+                color = color.copy(alpha = if (agentSpeaking) 0.92f else 0.56f),
+            ) {}
         }
     }
 }

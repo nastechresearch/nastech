@@ -80,6 +80,8 @@ class ElevenLabsSTSController(
     private var recorderJob: Job? = null
     private var playbackJob: Job? = null
     private var audioQueue: Channel<ByteArray>? = null
+    private val alignmentJobs = mutableListOf<Job>()
+    private var alignmentGeneration = 0L
     private var onTranscriptChange: ((String) -> Unit)? = null
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var previousAudioMode: Int? = null
@@ -124,6 +126,7 @@ class ElevenLabsSTSController(
     override fun stop() {
         val generation = sessionGeneration
         if (!state.value.isRecording) return
+        cancelSpeechAlignment(resetProgress = true)
         _state.update { it.copy(status = ASRStatus.Stopping, isAgentSpeaking = false) }
         sessionGeneration += 1
         webSocket?.close(1000, "Live call ended")
@@ -138,6 +141,7 @@ class ElevenLabsSTSController(
     }
 
     override fun dispose() {
+        cancelSpeechAlignment(resetProgress = true)
         sessionGeneration += 1
         webSocket?.cancel()
         webSocket = null
@@ -238,15 +242,17 @@ class ElevenLabsSTSController(
             }
 
             "audio" -> {
-                val encoded = event.optJSONObject("audio_event")
-                    ?.optString("audio_base_64")
-                    .orEmpty()
+                val audioEvent = event.optJSONObject("audio_event")
+                val encoded = audioEvent?.optString("audio_base_64").orEmpty()
                 if (encoded.isNotBlank()) {
                     val bytes = runCatching { Base64.decode(encoded, Base64.DEFAULT) }.getOrNull()
                     if (bytes != null && bytes.isNotEmpty()) {
                         _state.update { it.copy(isAgentSpeaking = true) }
                         audioQueue?.trySend(bytes)
                     }
+                }
+                audioEvent?.optJSONObject("alignment")?.let { alignment ->
+                    scheduleSpeechAlignment(generation, alignment)
                 }
             }
 
@@ -267,7 +273,14 @@ class ElevenLabsSTSController(
                     .orEmpty()
                     .trim()
                 if (response.isNotBlank()) {
-                    _state.update { it.copy(agentResponse = response, errorMessage = null) }
+                    cancelSpeechAlignment(resetProgress = false)
+                    _state.update {
+                        it.copy(
+                            agentResponse = response,
+                            agentSpeechProgressChars = 0,
+                            errorMessage = null,
+                        )
+                    }
                 }
             }
 
@@ -288,8 +301,8 @@ class ElevenLabsSTSController(
             }
 
             "ping" -> {
-                val ping = event.optJSONObject("ping_event")
-                val eventId = ping?.optLong("event_id", -1L) ?: -1L
+                val ping = event.optJSONObject("ping_event") ?: return
+                val eventId = ping.optLong("event_id", -1L)
                 if (eventId >= 0L) {
                     val delayMs = ping.optLong("ping_ms", 0L).coerceAtLeast(0L)
                     scope.launch {
@@ -307,7 +320,12 @@ class ElevenLabsSTSController(
             }
 
             "agent_response_complete" -> {
-                _state.update { it.copy(isAgentSpeaking = false) }
+                _state.update {
+                    it.copy(
+                        isAgentSpeaking = false,
+                        agentSpeechProgressChars = it.agentResponse.length,
+                    )
+                }
             }
 
             "error" -> {
@@ -457,6 +475,53 @@ class ElevenLabsSTSController(
         }
     }
 
+    /**
+     * Reveals a response only as its PCM audio reaches the listener. ElevenLabs
+     * timestamps are relative to each matching audio event, so progress updates use
+     * incremental delays and cannot move backwards.
+     */
+    private fun scheduleSpeechAlignment(generation: Long, alignment: JSONObject) {
+        val chars = alignment.optJSONArray("chars") ?: return
+        val startTimes = alignment.optJSONArray("char_start_times_ms") ?: return
+        val count = minOf(chars.length(), startTimes.length())
+        if (count <= 0) return
+
+        val alignedText = buildString {
+            repeat(count) { index -> append(chars.optString(index)) }
+        }
+        val response = state.value.agentResponse
+        if (response.isBlank() || alignedText.isBlank()) return
+
+        val currentProgress = state.value.agentSpeechProgressChars.coerceIn(0, response.length)
+        val responseOffset = response.indexOf(alignedText, startIndex = currentProgress)
+            .takeIf { it >= 0 }
+            ?: currentProgress
+        val expectedAlignment = alignmentGeneration
+        val job = scope.launch {
+            var previousTimeMs = 0L
+            repeat(count) { index ->
+                val startTimeMs = startTimes.optLong(index, previousTimeMs).coerceAtLeast(previousTimeMs)
+                delay(startTimeMs - previousTimeMs)
+                previousTimeMs = startTimeMs
+                if (!isCurrent(generation) || expectedAlignment != alignmentGeneration) return@launch
+                _state.update { current ->
+                    val progress = (responseOffset + index + 1).coerceAtMost(current.agentResponse.length)
+                    current.copy(agentSpeechProgressChars = maxOf(current.agentSpeechProgressChars, progress))
+                }
+            }
+        }
+        alignmentJobs += job
+    }
+
+    private fun cancelSpeechAlignment(resetProgress: Boolean) {
+        alignmentGeneration += 1
+        alignmentJobs.forEach { it.cancel() }
+        alignmentJobs.clear()
+        if (resetProgress) {
+            _state.update { it.copy(agentSpeechProgressChars = 0) }
+        }
+    }
+
     private fun pcmSampleRate(format: String?): Int? {
         val match = Regex("pcm_(\\d+)").matchEntire(format.orEmpty().lowercase()) ?: return null
         return match.groupValues.getOrNull(1)?.toIntOrNull()?.takeIf { it in 8_000..48_000 }
@@ -501,6 +566,7 @@ class ElevenLabsSTSController(
     }
 
     private fun flushAgentAudio() {
+        cancelSpeechAlignment(resetProgress = true)
         val queue = audioQueue
         while (queue?.tryReceive()?.isSuccess == true) {
             // Drain queued PCM immediately when either party interrupts.
@@ -517,6 +583,7 @@ class ElevenLabsSTSController(
 
     private fun finishNormally(generation: Long) {
         if (!isCurrent(generation)) return
+        cancelSpeechAlignment(resetProgress = true)
         sessionGeneration += 1
         webSocket = null
         releaseRecorder()
@@ -528,6 +595,7 @@ class ElevenLabsSTSController(
 
     private fun finishWithError(generation: Long, message: String) {
         if (!isCurrent(generation)) return
+        cancelSpeechAlignment(resetProgress = true)
         sessionGeneration += 1
         webSocket?.cancel()
         webSocket = null

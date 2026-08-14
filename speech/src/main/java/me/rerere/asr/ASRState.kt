@@ -13,6 +13,8 @@ data class ASRState(
     val isAvailable: Boolean = false,
     val transcript: String = "",
     val agentResponse: String = "",
+    /** Character progress confirmed by ElevenLabs audio alignment for word-synchronised display. */
+    val agentSpeechProgressChars: Int = 0,
     val isAgentSpeaking: Boolean = false,
     val errorMessage: String? = null,
     val amplitudes: List<Float> = emptyList(),
