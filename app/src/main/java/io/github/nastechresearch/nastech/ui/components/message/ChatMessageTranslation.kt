@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
@@ -37,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,117 +55,179 @@ import io.github.nastechresearch.nastech.R
 import io.github.nastechresearch.nastech.ui.components.richtext.MarkdownBlock
 import java.util.Locale
 
+private data class TranslationLanguage(
+    val locale: Locale,
+    val displayName: String,
+    val searchTerms: String = displayName,
+)
+
+private data class TranslationLanguageGroup(
+    val title: String,
+    val languages: List<TranslationLanguage>,
+)
+
+private fun translationLanguageGroups(): List<TranslationLanguageGroup> = listOf(
+    TranslationLanguageGroup(
+        title = "East Africa",
+        languages = listOf(
+            TranslationLanguage(Locale.forLanguageTag("sw"), "🇹🇿 Kiswahili (Swahili)", "swahili kiswahili east africa bantu sw"),
+            TranslationLanguage(Locale.forLanguageTag("rw"), "🇷🇼 Kinyarwanda", "kinyarwanda rwanda east africa bantu rw"),
+            TranslationLanguage(Locale.forLanguageTag("rn"), "🇧🇮 Kirundi", "kirundi burundi east africa bantu rn"),
+            TranslationLanguage(Locale.forLanguageTag("lg"), "🇺🇬 Luganda", "luganda uganda east africa bantu lg"),
+            TranslationLanguage(Locale.forLanguageTag("om"), "🇪🇹 Afaan Oromo", "oromo afaan oromo ethiopia east africa om"),
+            TranslationLanguage(Locale.forLanguageTag("ti"), "🇪🇷 Tigrinya", "tigrinya eritrea ethiopia east africa ti"),
+            TranslationLanguage(Locale.forLanguageTag("am"), "🇪🇹 Amharic", "amharic ethiopia east africa am"),
+        ),
+    ),
+    TranslationLanguageGroup(
+        title = "Southern Africa",
+        languages = listOf(
+            TranslationLanguage(Locale.forLanguageTag("zu"), "🇿🇦 isiZulu", "zulu isizulu south africa southern africa bantu zu"),
+            TranslationLanguage(Locale.forLanguageTag("xh"), "🇿🇦 isiXhosa", "xhosa isixhosa south africa southern africa bantu xh"),
+            TranslationLanguage(Locale.forLanguageTag("st"), "🇱🇸 Sesotho", "sotho sesotho lesotho southern africa bantu st"),
+            TranslationLanguage(Locale.forLanguageTag("tn"), "🇧🇼 Setswana", "tswana setswana botswana southern africa bantu tn"),
+            TranslationLanguage(Locale.forLanguageTag("ss"), "🇸🇿 siSwati", "swati siswati eswatini southern africa bantu ss"),
+            TranslationLanguage(Locale.forLanguageTag("nr"), "🇿🇦 isiNdebele", "ndebele isindebele south africa southern africa bantu nr"),
+            TranslationLanguage(Locale.forLanguageTag("ny"), "🇲🇼 Chichewa", "chichewa chewa malawi southern africa bantu ny"),
+            TranslationLanguage(Locale.forLanguageTag("sn"), "🇿🇼 Shona", "shona zimbabwe southern africa bantu sn"),
+        ),
+    ),
+    TranslationLanguageGroup(
+        title = "West Africa",
+        languages = listOf(
+            TranslationLanguage(Locale.forLanguageTag("yo"), "🇳🇬 Yoruba", "yoruba nigeria west africa yo"),
+            TranslationLanguage(Locale.forLanguageTag("ig"), "🇳🇬 Igbo", "igbo nigeria west africa ig"),
+            TranslationLanguage(Locale.forLanguageTag("ha"), "🇳🇬 Hausa", "hausa nigeria niger west africa ha"),
+            TranslationLanguage(Locale.forLanguageTag("ak"), "🇬🇭 Akan (Twi)", "akan twi ghana west africa ak"),
+            TranslationLanguage(Locale.forLanguageTag("ee"), "🇬🇭 Ewe", "ewe ghana togo west africa ee"),
+            TranslationLanguage(Locale.forLanguageTag("wo"), "🇸🇳 Wolof", "wolof senegal west africa wo"),
+        ),
+    ),
+    TranslationLanguageGroup(
+        title = "North Africa",
+        languages = listOf(
+            TranslationLanguage(Locale.forLanguageTag("ar"), "🇪🇬 Arabic", "arabic north africa middle east ar"),
+            TranslationLanguage(Locale.forLanguageTag("ar-MA"), "🇲🇦 Moroccan Arabic", "darija moroccan arabic morocco north africa ar-ma"),
+            TranslationLanguage(Locale.forLanguageTag("zgh"), "🇲🇦 Tamazight", "tamazight amazigh berber morocco north africa zgh"),
+            TranslationLanguage(Locale.forLanguageTag("kab"), "🇩🇿 Kabyle", "kabyle algeria north africa kab"),
+        ),
+    ),
+    TranslationLanguageGroup(
+        title = "Universal languages",
+        languages = listOf(
+            TranslationLanguage(Locale.ENGLISH, "🇬🇧 English", "english en universal"),
+            TranslationLanguage(Locale.FRENCH, "🇫🇷 Français", "french francais fr universal"),
+            TranslationLanguage(Locale.forLanguageTag("pt-BR"), "🇧🇷 Português", "portuguese portugues pt brazil universal"),
+            TranslationLanguage(Locale.forLanguageTag("es-ES"), "🇪🇸 Español", "spanish espanol es universal"),
+            TranslationLanguage(Locale.GERMAN, "🇩🇪 Deutsch", "german deutsch de universal"),
+            TranslationLanguage(Locale.ITALIAN, "🇮🇹 Italiano", "italian it universal"),
+            TranslationLanguage(Locale.SIMPLIFIED_CHINESE, "🇨🇳 Simplified Chinese", "chinese simplified mandarin zh universal"),
+            TranslationLanguage(Locale.TRADITIONAL_CHINESE, "🇹🇼 Traditional Chinese", "chinese traditional mandarin zh universal"),
+            TranslationLanguage(Locale.JAPANESE, "🇯🇵 Japanese", "japanese ja universal"),
+            TranslationLanguage(Locale.KOREAN, "🇰🇷 Korean", "korean ko universal"),
+            TranslationLanguage(Locale.forLanguageTag("fa"), "🇮🇷 فارسی", "persian farsi iran fa universal"),
+            TranslationLanguage(Locale.forLanguageTag("ur"), "🇵🇰 اردو", "urdu pakistan ur universal"),
+        ),
+    ),
+)
+
 @Composable
 fun LanguageSelectionDialog(
     onLanguageSelected: (Locale) -> Unit,
     onClearTranslation: () -> Unit = {},
-    onDismissRequest: () -> Unit
+    onDismissRequest: () -> Unit,
 ) {
-    // 支持的语言列表
-    val languages = remember {
-        listOf(
-            Locale.SIMPLIFIED_CHINESE,
-            Locale.ENGLISH,
-            Locale.TRADITIONAL_CHINESE,
-            Locale.JAPANESE,
-            Locale.KOREAN,
-            Locale.FRENCH,
-            Locale.GERMAN,
-            Locale.forLanguageTag("es-ES"),
-            Locale.ITALIAN,
-            Locale.forLanguageTag("ar"),
-            Locale.forLanguageTag("fa"),
-            Locale.forLanguageTag("ur"),
-        )
-    }
-
-    // 语言名称映射函数，原有的 locale.displayName 方法无法获取 emoji
-    @Composable
-    fun getLanguageDisplayName(locale: Locale): String {
-        return when (locale) {
-            Locale.SIMPLIFIED_CHINESE -> stringResource(R.string.language_simplified_chinese)
-            Locale.ENGLISH -> stringResource(R.string.language_english)
-            Locale.TRADITIONAL_CHINESE -> stringResource(R.string.language_traditional_chinese)
-            Locale.JAPANESE -> stringResource(R.string.language_japanese)
-            Locale.KOREAN -> stringResource(R.string.language_korean)
-            Locale.FRENCH -> stringResource(R.string.language_french)
-            Locale.GERMAN -> stringResource(R.string.language_german)
-            Locale.ITALIAN -> stringResource(R.string.language_italian)
-            Locale.forLanguageTag("es-ES") -> stringResource(R.string.language_spanish)
-            Locale.forLanguageTag("ar") -> stringResource(R.string.language_arabic)
-            Locale.forLanguageTag("fa") -> stringResource(R.string.language_persian)
-            Locale.forLanguageTag("ur") -> stringResource(R.string.language_urdu)
-            else -> locale.getDisplayLanguage(Locale.getDefault())
+    val languageGroups = remember { translationLanguageGroups() }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val normalizedQuery = searchQuery.trim().lowercase(Locale.ROOT)
+    val matchingGroups = languageGroups.mapNotNull { group ->
+        val matches = group.languages.filter { language ->
+            normalizedQuery.isBlank() ||
+                language.displayName.lowercase(Locale.ROOT).contains(normalizedQuery) ||
+                language.searchTerms.lowercase(Locale.ROOT).contains(normalizedQuery) ||
+                language.locale.toLanguageTag().lowercase(Locale.ROOT).contains(normalizedQuery)
         }
+        group.takeIf { matches.isNotEmpty() }?.copy(languages = matches)
     }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)),
+        sheetState = rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // 标题
             Text(
                 text = stringResource(R.string.translation_language_selection_title),
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = "African languages are shown first, followed by universal languages.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text("Search language, region, or code") },
             )
 
-            // 语言列表
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                items(languages, key = { it.toLanguageTag() }) { language ->
-                    Card(
-                        onClick = {
-                            onLanguageSelected(language)
-                        },
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = HugeIcons.LanguageCircle,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = getLanguageDisplayName(language),
-                                style = MaterialTheme.typography.titleMedium,
-                            )
-                        }
+                matchingGroups.forEach { group ->
+                    item(key = "heading-${group.title}") {
+                        Text(
+                            text = group.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                        )
+                    }
+                    items(group.languages, key = { it.locale.toLanguageTag() }) { language ->
+                        TranslationLanguageCard(
+                            language = language,
+                            onClick = { onLanguageSelected(language.locale) },
+                        )
                     }
                 }
-
+                if (matchingGroups.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No language matches your search.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 20.dp),
+                        )
+                    }
+                }
                 item {
                     Card(
-                        onClick = {
-                            onClearTranslation()
-                        },
-                        shape = MaterialTheme.shapes.medium
+                        onClick = onClearTranslation,
+                        shape = MaterialTheme.shapes.medium,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        ),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier
                                 .padding(16.dp)
-                                .fillMaxWidth()
+                                .fillMaxWidth(),
                         ) {
-                            Icon(
-                                imageVector = HugeIcons.Cancel01,
-                                contentDescription = null,
-                            )
+                            Icon(imageVector = HugeIcons.Cancel01, contentDescription = null)
                             Text(
                                 text = stringResource(R.string.translation_clear),
                                 style = MaterialTheme.typography.titleMedium,
@@ -171,6 +235,43 @@ fun LanguageSelectionDialog(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranslationLanguageCard(
+    language: TranslationLanguage,
+    onClick: () -> Unit,
+) {
+    Card(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+        ) {
+            Icon(
+                imageVector = HugeIcons.LanguageCircle,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = language.displayName, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = language.locale.toLanguageTag(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
