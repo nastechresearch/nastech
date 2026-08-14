@@ -6,66 +6,45 @@ import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsKokoroModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import me.rerere.tts.kokoro.KokoroModelPackage
 import me.rerere.tts.kokoro.KokoroPackageManager
+import me.rerere.tts.kokoro.KokoroPackageVariant
 import me.rerere.tts.model.AudioChunk
 import me.rerere.tts.model.AudioFormat
 import me.rerere.tts.model.TTSRequest
+import me.rerere.tts.provider.LocalVoiceEngine
 import me.rerere.tts.provider.TTSProvider
 import me.rerere.tts.provider.TTSProviderSetting
 
 /**
- * On-device Kokoro synthesis backed by the complete Sherpa-ONNX package. The provider deliberately
- * refuses to run until [KokoroPackageManager] has verified and unpacked the model in app storage.
+ * On-device Kokoro v1.1 synthesis backed by a checksum-verified, app-private model package.
+ * Every local package contains the same 103 speaker embeddings. The optional NNAPI preference asks
+ * Android to use a compatible accelerator and transparently recreates the runtime on CPU if setup
+ * fails on the current device.
  */
 class KokoroLocalTTSProvider(
     private val packageManager: KokoroPackageManager,
-) : TTSProvider<TTSProviderSetting.KokoroLocal> {
+) : TTSProvider<TTSProviderSetting.LocalVoiceLibrary> {
     override fun generateSpeech(
         context: Context,
-        providerSetting: TTSProviderSetting.KokoroLocal,
+        providerSetting: TTSProviderSetting.LocalVoiceLibrary,
         request: TTSRequest,
     ): Flow<AudioChunk> = flow {
-        val modelDirectory = packageManager.readyDirectory()
-            ?: error("Download and verify the Kokoro local voice package before using this provider")
-        if (providerSetting.packageId != KokoroModelPackage.ID) {
-            error("The selected Kokoro package is not available on this device")
-        }
-
-        val kokoro = OfflineTtsKokoroModelConfig().apply {
-            model = modelDirectory.resolve("model.onnx").absolutePath
-            voices = modelDirectory.resolve("voices.bin").absolutePath
-            tokens = modelDirectory.resolve("tokens.txt").absolutePath
-            dataDir = modelDirectory.resolve("espeak-ng-data").absolutePath
-            lexicon = listOf(
-                modelDirectory.resolve("lexicon-us-en.txt").absolutePath,
-                modelDirectory.resolve("lexicon-zh.txt").absolutePath,
-            ).joinToString(",")
-        }
-        val modelConfig = OfflineTtsModelConfig().apply {
-            this.kokoro = kokoro
-            numThreads = 2
-            debug = false
-            provider = "cpu"
-        }
-        val config = OfflineTtsConfig().apply {
-            model = modelConfig
-            maxNumSentences = 1
-            silenceScale = 0.2f
-        }
-
-        // The resolved Android AAR accepts AssetManager even when all model paths point to
-        // app-owned files; it uses it to load the bundled native runtime.
-        val tts = OfflineTts(context.assets, config)
+        val modelPackage = LocalVoiceEngine.fromId(providerSetting.engineId).modelPackage
+        val modelDirectory = packageManager.readyDirectory(modelPackage)
+            ?: error("Download and verify the selected local voice package before using this provider")
+        val requestedProvider = providerSetting.provider.normalizedProvider()
+        val runtime = createRuntime(context, modelDirectory, modelPackage, requestedProvider)
         try {
-            val audio = tts.generate(
+            val audio = runtime.tts.generate(
                 request.text,
                 KokoroModelPackage.speakerId(providerSetting.voiceId),
-                providerSetting.speechRate.coerceIn(0.5f, 2.0f),
+                providerSetting.speechRate.coerceIn(MIN_SPEECH_RATE, MAX_SPEECH_RATE),
             )
             val samples = audio.samples
             if (samples.isEmpty()) error("Kokoro returned no audio for this text")
@@ -77,15 +56,72 @@ class KokoroLocalTTSProvider(
                     isLast = true,
                     metadata = mapOf(
                         "provider" to "kokoro-local",
-                        "voiceId" to providerSetting.voiceId,
-                        "modelVersion" to providerSetting.modelVersion,
+                        "requestedProvider" to requestedProvider,
+                        "activeProvider" to runtime.activeProvider,
+                        "acceleratorFallback" to runtime.didFallback.toString(),
+                        "voiceId" to KokoroModelPackage.voiceFor(providerSetting.voiceId).id,
+                        "speakerId" to KokoroModelPackage.speakerId(providerSetting.voiceId).toString(),
+                        "packageId" to modelPackage.id,
+                        "modelVersion" to KokoroModelPackage.VERSION,
                         "onDevice" to "true",
                     ),
                 ),
             )
         } finally {
-            tts.release()
+            runtime.tts.release()
         }
+    }
+
+    private fun createRuntime(
+        context: Context,
+        modelDirectory: File,
+        modelPackage: KokoroPackageVariant,
+        requestedProvider: String,
+    ): RuntimeSelection {
+        return runCatching {
+            RuntimeSelection(
+                tts = createOfflineTts(context, modelDirectory, modelPackage, requestedProvider),
+                activeProvider = requestedProvider,
+                didFallback = false,
+            )
+        }.getOrElse { originalError ->
+            if (requestedProvider != NNAPI_PROVIDER) throw originalError
+            RuntimeSelection(
+                tts = createOfflineTts(context, modelDirectory, modelPackage, CPU_PROVIDER),
+                activeProvider = CPU_PROVIDER,
+                didFallback = true,
+            )
+        }
+    }
+
+    private fun createOfflineTts(
+        context: Context,
+        modelDirectory: File,
+        modelPackage: KokoroPackageVariant,
+        provider: String,
+    ): OfflineTts {
+        val kokoro = OfflineTtsKokoroModelConfig().apply {
+            model = modelDirectory.resolve(modelPackage.modelFileName).absolutePath
+            voices = modelDirectory.resolve("voices.bin").absolutePath
+            tokens = modelDirectory.resolve("tokens.txt").absolutePath
+            dataDir = modelDirectory.resolve("espeak-ng-data").absolutePath
+            lexicon = listOf(
+                modelDirectory.resolve("lexicon-us-en.txt").absolutePath,
+                modelDirectory.resolve("lexicon-zh.txt").absolutePath,
+            ).joinToString(",")
+        }
+        val modelConfig = OfflineTtsModelConfig().apply {
+            this.kokoro = kokoro
+            numThreads = Runtime.getRuntime().availableProcessors().coerceIn(1, MAX_CPU_THREADS)
+            debug = false
+            this.provider = provider
+        }
+        val config = OfflineTtsConfig().apply {
+            model = modelConfig
+            maxNumSentences = 1
+            silenceScale = 0.2f
+        }
+        return OfflineTts(context.assets, config)
     }
 
     private fun pcmFloatsToWav(samples: FloatArray, sampleRate: Int): ByteArray {
@@ -115,10 +151,26 @@ class KokoroLocalTTSProvider(
         return output.toByteArray()
     }
 
+    private data class RuntimeSelection(
+        val tts: OfflineTts,
+        val activeProvider: String,
+        val didFallback: Boolean,
+    )
+
+    private fun String.normalizedProvider(): String = when (lowercase()) {
+        NNAPI_PROVIDER -> NNAPI_PROVIDER
+        else -> CPU_PROVIDER
+    }
+
     private companion object {
+        const val CPU_PROVIDER = "cpu"
+        const val NNAPI_PROVIDER = "nnapi"
         const val WAV_HEADER_BYTES = 44
         const val CHANNELS = 1
         const val PCM_BYTES_PER_SAMPLE = 2
         const val BITS_PER_SAMPLE = 16
+        const val MAX_CPU_THREADS = 4
+        const val MIN_SPEECH_RATE = 0.5f
+        const val MAX_SPEECH_RATE = 2.0f
     }
 }

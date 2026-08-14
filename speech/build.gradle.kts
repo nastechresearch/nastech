@@ -25,7 +25,8 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.okhttp)
-    implementation(libs.onnxruntime.android)
+    // Sherpa packages its compatible ONNX Runtime native library. Keeping a second direct
+    // onnxruntime-android AAR causes Android's release native-library merge to fail.
     implementation(libs.sherpa.onnx.android)
     implementation(libs.commons.compress)
 
