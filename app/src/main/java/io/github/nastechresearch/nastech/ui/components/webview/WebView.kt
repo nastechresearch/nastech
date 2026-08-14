@@ -51,8 +51,16 @@ internal class MyWebChromeClient(private val state: WebViewState) : WebChromeCli
 }
 
 internal class MyWebViewClient(private val state: WebViewState) : WebViewClient() {
+    /**
+     * `loadDataWithBaseURL` represents the supplied document as a `data:` navigation internally.
+     * Permit that self-contained document while continuing to reject every file, content, and
+     * network origin other than the app's local asset host. The artifact CSP still restricts
+     * subresources to inline data and `https://nastech.local`.
+     */
     private fun isAllowedIsolatedPreviewUri(uri: Uri): Boolean =
-        uri.scheme.equals("https", ignoreCase = true) && uri.host.equals("nastech.local", ignoreCase = true)
+        uri.scheme.equals("data", ignoreCase = true) ||
+            (uri.scheme.equals("https", ignoreCase = true) &&
+                uri.host.equals("nastech.local", ignoreCase = true))
 
     private fun blockedResponse() = WebResourceResponse(
         "text/plain",
