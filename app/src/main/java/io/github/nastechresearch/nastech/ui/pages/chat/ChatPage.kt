@@ -335,6 +335,7 @@ private fun ChatPageContent(
                 ChatInput(
                     state = inputState,
                     loading = loadingJob != null,
+                    processingStatus = processingStatus,
                     settings = setting,
                     hazeState = hazeState,
                     completionProviders = completionProviders,
@@ -427,7 +428,6 @@ private fun ChatPageContent(
                 conversation = conversation,
                 state = chatListState,
                 loading = loadingJob != null,
-                processingStatus = processingStatus,
                 previewMode = previewMode,
                 settings = setting,
                 hazeState = hazeState,

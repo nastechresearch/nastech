@@ -115,7 +115,6 @@ fun ChatList(
     conversation: Conversation,
     state: LazyListState,
     loading: Boolean,
-    processingStatus: String? = null,
     previewMode: Boolean,
     settings: Settings,
     hazeState: HazeState,
@@ -158,7 +157,6 @@ fun ChatList(
                 conversation = conversation,
                 state = state,
                 loading = loading,
-                processingStatus = processingStatus,
                 settings = settings,
                 hazeState = hazeState,
                 errors = errors,
@@ -188,7 +186,6 @@ private fun ChatListNormal(
     conversation: Conversation,
     state: LazyListState,
     loading: Boolean,
-    processingStatus: String? = null,
     settings: Settings,
     hazeState: HazeState,
     errors: List<ChatError>,
@@ -396,15 +393,6 @@ private fun ChatListNormal(
                         RabbitLoadingIndicator(
                             modifier = Modifier.size(28.dp)
                         )
-                        AnimatedVisibility(
-                            visible = processingStatus != null,
-                        ) {
-                            Text(
-                                text = processingStatus ?: "",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
                     }
                 }
             }
