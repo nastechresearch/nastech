@@ -28,8 +28,8 @@ android {
         applicationId = "io.github.nastechresearch.nastech"
         minSdk = 26
         targetSdk = 37
-        versionCode = 190
-        versionName = "2.4.22"
+        versionCode = 191
+        versionName = "2.4.23"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
