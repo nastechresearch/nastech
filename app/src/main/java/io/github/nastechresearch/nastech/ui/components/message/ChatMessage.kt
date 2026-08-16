@@ -279,8 +279,12 @@ fun ChatMessage(
 
 private fun isCompleteHtmlArtifact(content: String): Boolean {
     val trimmed = content.trimStart()
-    return (trimmed.startsWith("<!doctype html", ignoreCase = true) || trimmed.startsWith("<html", ignoreCase = true)) &&
-        trimmed.contains("</html>", ignoreCase = true)
+    return trimmed.startsWith("<!doctype html", ignoreCase = true) ||
+        trimmed.startsWith("<html", ignoreCase = true) ||
+        trimmed.startsWith("```html", ignoreCase = true) ||
+        trimmed.startsWith("<svg", ignoreCase = true) ||
+        trimmed.contains("<canvas", ignoreCase = true) ||
+        (trimmed.contains("<div", ignoreCase = true) && trimmed.contains("</html>", ignoreCase = true))
 }
 
 @OptIn(FlowPreview::class)
@@ -469,9 +473,21 @@ private fun MessagePartsBlock(
                             }
                         }
 
-                        // A complete assistant HTML document is a first-class response artifact. It stays
-                        // cache-only and isolated until the user explicitly chooses Copy or Save a copy.
-                        val renderedAsHtmlArtifact = role != MessageRole.USER && !loading && isCompleteHtmlArtifact(part.text)
+                        // A complete assistant HTML document is a first-class response artifact. It renders
+                        // instantly as an interactive in-chat widget as soon as HTML structure is detected.
+                        val cleanHtmlText = remember(part.text) {
+                            val t = part.text.trim()
+                            when {
+                                t.startsWith("```html", ignoreCase = true) -> {
+                                    t.removePrefix("```html").removePrefix("```HTML").removeSuffix("```").trim()
+                                }
+                                t.startsWith("```", ignoreCase = true) && (t.contains("<html", ignoreCase = true) || t.contains("<!doctype", ignoreCase = true)) -> {
+                                    t.substringAfter("\n").removeSuffix("```").trim()
+                                }
+                                else -> part.text
+                            }
+                        }
+                        val renderedAsHtmlArtifact = role != MessageRole.USER && (isCompleteHtmlArtifact(cleanHtmlText) || cleanHtmlText.contains("<!DOCTYPE html>", ignoreCase = true) || cleanHtmlText.contains("<html", ignoreCase = true))
 
                         // 流式生成期间不启用 SelectionContainer：Markdown 在不断重渲染，
                         // 内部可选择的 Text 会频繁注册/注销，与 Compose 选择工具栏在绘制阶段
@@ -480,7 +496,7 @@ private fun MessagePartsBlock(
                         if (!renderedAsWebviewCard) {
                             if (renderedAsHtmlArtifact) {
                                 HtmlResponseArtifact(
-                                    html = part.text,
+                                    html = cleanHtmlText,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .animateContentSize(),
